@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QueUp | YouTube Watch Queue</title>
+    <meta
+      name="description"
+      content="QueUp is a Chrome extension that turns a private YouTube playlist named Que into a fast watch queue."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <header class="topbar">
+      <a class="brand" href="/">QueUp</a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="/privacy.html">Privacy</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="kicker">Chrome Extension</p>
+        <h1>Your YouTube queue, finally simple.</h1>
+        <p>
+          QueUp adds an <strong>Add to Que</strong> or <strong>Remove from Que</strong> button to YouTube videos and recommendations, powered by a private playlist named <strong>Que</strong>.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="#install">Install QueUp</a>
+          <a class="btn ghost" href="https://www.youtube.com/" target="_blank" rel="noreferrer"
+            >Open YouTube</a
+          >
+        </div>
+      </section>
+
+      <section id="features" class="grid">
+        <article class="card">
+          <h2>Queue from anywhere</h2>
+          <p>Every video card can show a one-click queue action, including recommended videos.</p>
+        </article>
+        <article class="card">
+          <h2>Private by default</h2>
+          <p>Storage lives in your own private YouTube playlist titled <strong>Que</strong>.</p>
+        </article>
+        <article class="card">
+          <h2>Auto cleanup</h2>
+          <p>When a queued video is watched, QueUp removes it from the playlist automatically.</p>
+        </article>
+        <article class="card">
+          <h2>Jump to queue fast</h2>
+          <p>A prominent <strong>Open Que Playlist</strong> button appears directly on YouTube.</p>
+        </article>
+      </section>
+
+      <section id="install" class="install">
+        <h2>Install Steps</h2>
+        <ol>
+          <li>Set your Google OAuth Client ID in <code>extension/manifest.json</code>.</li>
+          <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
+          <li>Enable <strong>Developer mode</strong> and click <strong>Load unpacked</strong>.</li>
+          <li>Select the <code>extension/</code> folder from this repo.</li>
+          <li>Open YouTube and use <strong>Add to Que</strong>.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built for fast watch later workflows. Privacy policy available at <a href="/privacy.html">/privacy.html</a>.</p>
+    </footer>
+  </body>
+</html>

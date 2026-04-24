@@ -1,0 +1,81 @@
+.queup-button {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  background: #f4fbff;
+  color: #0f3e52;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  margin-top: 8px;
+  min-height: 30px;
+  padding: 0 12px;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.queup-button:hover {
+  background: #d6f4ff;
+  transform: translateY(-1px);
+}
+
+.queup-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+}
+
+.queup-button--in-queue {
+  background: #0f3e52;
+  border-color: #0f3e52;
+  color: #ffffff;
+}
+
+.queup-button--in-queue:hover {
+  background: #1d5f79;
+}
+
+.queup-watch-button {
+  margin-right: 10px;
+  margin-top: 0;
+}
+
+.queup-inline-button {
+  margin-bottom: 2px;
+}
+
+.queup-open-queue {
+  appearance: none;
+  background: linear-gradient(120deg, #ffcc65, #ff9a3b);
+  border: none;
+  border-radius: 999px;
+  bottom: 20px;
+  box-shadow: 0 12px 24px rgba(255, 122, 47, 0.33);
+  color: #272522;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 12px 18px;
+  position: fixed;
+  right: 20px;
+  z-index: 2147483647;
+}
+
+.queup-open-queue:hover {
+  transform: translateY(-1px);
+}
+
+.queup-open-queue:disabled {
+  opacity: 0.75;
+}
+
+@media (max-width: 860px) {
+  .queup-open-queue {
+    bottom: 12px;
+    font-size: 12px;
+    padding: 10px 14px;
+    right: 12px;
+  }
+}
