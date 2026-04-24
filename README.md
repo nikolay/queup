@@ -39,6 +39,11 @@ The static site is in `site/` with:
 - `site/index.html`
 - `site/privacy.html`
 - `site/styles.css`
-- `site/CNAME` (`queup.io`)
+- `site/CNAME` (`queup.io`, kept for future custom-domain deployment)
 
-You can deploy `site/` to any static host (GitHub Pages, Netlify, Cloudflare Pages, Vercel static).
+GitHub Pages is deployed from `site/` through `.github/workflows/pages.yml`.
+The workflow excludes `site/CNAME` so the project page stays available at:
+
+- `https://nikolay.github.io/queup/`
+
+When DNS for `queup.io` is ready, deploy `site/CNAME` with the site artifact or configure the custom domain in GitHub Pages settings.
