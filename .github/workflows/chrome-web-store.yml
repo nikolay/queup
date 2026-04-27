@@ -39,7 +39,7 @@ jobs:
         run: |
           version="$(node -p "require('./extension/manifest.json').version")"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "package=queup-chrome-extension-${version}.zip" >> "$GITHUB_OUTPUT"
+          echo "package_base=queup-chrome-extension-${version}" >> "$GITHUB_OUTPUT"
 
       - name: Ensure tag matches manifest version
         if: github.ref_type == 'tag'
@@ -59,14 +59,44 @@ jobs:
           node --check extension/popup.js
 
       - name: Package extension
+        id: package
+        env:
+          CWS_CRX_PRIVATE_KEY: ${{ secrets.CWS_CRX_PRIVATE_KEY }}
         run: |
-          package_dir="$(mktemp -d)"
+          package_dir="${RUNNER_TEMP}/queup-extension"
+          rm -rf "${package_dir}"
+          mkdir -p "${package_dir}"
           cp -R extension/. "${package_dir}/"
           node -e "const fs = require('fs'); const path = '${package_dir}/manifest.json'; const manifest = JSON.parse(fs.readFileSync(path, 'utf8')); delete manifest.key; fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');"
-          cd "${package_dir}"
-          zip -r "${GITHUB_WORKSPACE}/${{ steps.extension.outputs.package }}" . \
-            -x "*.DS_Store" \
-            -x "__MACOSX/*"
+
+          if [ -n "${CWS_CRX_PRIVATE_KEY}" ]; then
+            key_file="${RUNNER_TEMP}/queup-cws-crx-private-key.pem"
+            printf '%s\n' "${CWS_CRX_PRIVATE_KEY}" > "${key_file}"
+            chmod 600 "${key_file}"
+
+            chrome_bin="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+            if [ -z "${chrome_bin}" ]; then
+              echo "::error::Could not find Chrome or Chromium to sign the CRX package."
+              exit 1
+            fi
+
+            "${chrome_bin}" \
+              --headless=new \
+              --disable-gpu \
+              --no-sandbox \
+              --pack-extension="${package_dir}" \
+              --pack-extension-key="${key_file}"
+            mv "${package_dir}.crx" "${GITHUB_WORKSPACE}/${{ steps.extension.outputs.package_base }}.crx"
+            echo "package=${{ steps.extension.outputs.package_base }}.crx" >> "$GITHUB_OUTPUT"
+            echo "is_crx=true" >> "$GITHUB_OUTPUT"
+          else
+            cd "${package_dir}"
+            zip -r "${GITHUB_WORKSPACE}/${{ steps.extension.outputs.package_base }}.zip" . \
+              -x "*.DS_Store" \
+              -x "__MACOSX/*"
+            echo "package=${{ steps.extension.outputs.package_base }}.zip" >> "$GITHUB_OUTPUT"
+            echo "is_crx=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Authenticate to Google Cloud
         id: auth
@@ -97,12 +127,21 @@ jobs:
       - name: Upload package to Chrome Web Store
         run: |
           response_file="$(mktemp)"
+          headers=(
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}"
+          )
+          if [ "${{ steps.package.outputs.is_crx }}" = "true" ]; then
+            headers+=(
+              -H "X-Goog-Upload-Protocol: raw"
+              -H "X-Goog-Upload-File-Name: ${{ steps.package.outputs.package }}"
+            )
+          fi
           status="$(curl -sS --retry 3 --retry-delay 5 \
             -o "${response_file}" \
             -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            "${headers[@]}" \
             -X POST \
-            -T "${{ steps.extension.outputs.package }}" \
+            -T "${{ steps.package.outputs.package }}" \
             "https://chromewebstore.googleapis.com/upload/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:upload")"
           cat "${response_file}"
           if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then

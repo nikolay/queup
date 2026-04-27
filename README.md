@@ -89,6 +89,7 @@ Required repository secrets:
 - `CWS_EXTENSION_ID`: Chrome Web Store item ID, currently `fldmblmmafcjlpgnoppjdpkfkkeejnkk`.
 - `CWS_PUBLISHER_ID`: Chrome Web Store publisher ID from the Developer Dashboard account page.
 - `CWS_SERVICE_ACCOUNT_JSON`: JSON key for the Google Cloud service account granted Chrome Web Store API access in the Developer Dashboard.
+- `CWS_CRX_PRIVATE_KEY`: RSA private key used to sign CRX uploads after Verified CRX uploads are enabled.
 
 Required Google Cloud APIs:
 
@@ -102,9 +103,22 @@ Required service account IAM binding:
 The workflow uses Chrome Web Store API v2 to:
 
 1. Validate the extension files.
-2. Zip the contents of `extension/`, with `manifest.key` removed for Chrome Web Store compatibility.
-3. Upload the package to the existing Chrome Web Store item.
+2. Package the contents of `extension/`, with `manifest.key` removed for Chrome Web Store compatibility.
+3. Upload the ZIP package, or a signed CRX package when `CWS_CRX_PRIVATE_KEY` is configured, to the existing Chrome Web Store item.
 4. Fetch upload status.
 5. Submit the item for review.
 
 By default, manual and tag-triggered submissions use `STAGED_PUBLISH`, so approved updates are staged for manual release instead of immediately published.
+
+### Verified CRX uploads
+
+Chrome Web Store Verified CRX uploads require every future package upload to be a signed `.crx` file. Generate a signing key pair with:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out privatekey.pem
+openssl rsa -in privatekey.pem -pubout -out publickey.pem
+```
+
+Opt in from the Chrome Web Store Developer Dashboard package tab using the public key. Store the private key as the `CWS_CRX_PRIVATE_KEY` repository secret. Once that secret exists, `.github/workflows/chrome-web-store.yml` signs the stripped extension package with Chrome and uploads the resulting `.crx` with the required Chrome Web Store API headers.
+
+Keep the private key somewhere secure outside the repository. If it is lost, Chrome Web Store support must help replace it before future uploads can continue.

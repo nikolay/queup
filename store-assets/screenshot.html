@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>QueUp Chrome Web Store Screenshot</title>
+    <style>
+      :root {
+        --sand: #fff8ea;
+        --mint: #d8f4ee;
+        --sea: #0f4f5f;
+        --ink: #10222d;
+        --amber: #ffb648;
+        --amber-deep: #ff8f2f;
+        --line: rgba(16, 34, 45, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 800px;
+        margin: 0;
+        overflow: hidden;
+        width: 1280px;
+      }
+
+      html {
+        background: linear-gradient(135deg, #fffdf8, #f6fff8);
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 12% 18%, rgba(255, 206, 111, 0.65), transparent 28%),
+          radial-gradient(circle at 92% 20%, rgba(139, 217, 203, 0.68), transparent 30%),
+          linear-gradient(135deg, #fffdf8, #f6fff8);
+        color: var(--ink);
+        font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+        padding: 40px;
+      }
+
+      .frame {
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid var(--line);
+        border-radius: 36px;
+        box-shadow: 0 34px 80px rgba(15, 79, 95, 0.14);
+        display: grid;
+        gap: 34px;
+        grid-template-columns: 0.95fr 1.25fr;
+        height: 720px;
+        padding: 40px;
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: 14px;
+        margin-bottom: 42px;
+      }
+
+      .mark {
+        background: linear-gradient(135deg, var(--sand), var(--mint));
+        border-radius: 22px;
+        box-shadow: inset 0 0 0 2px rgba(15, 79, 95, 0.14);
+        display: grid;
+        height: 74px;
+        place-items: center;
+        width: 74px;
+      }
+
+      .q {
+        border: 9px solid var(--sea);
+        border-radius: 50%;
+        height: 44px;
+        position: relative;
+        width: 44px;
+      }
+
+      .q::after {
+        background: var(--sea);
+        border-radius: 999px;
+        bottom: -9px;
+        content: "";
+        height: 22px;
+        position: absolute;
+        right: -7px;
+        transform: rotate(-42deg);
+        width: 9px;
+      }
+
+      .play {
+        border-bottom: 10px solid transparent;
+        border-left: 16px solid var(--amber-deep);
+        border-top: 10px solid transparent;
+        height: 0;
+        left: 16px;
+        position: absolute;
+        top: 11px;
+        width: 0;
+      }
+
+      .brand h1 {
+        font-size: 44px;
+        letter-spacing: -0.04em;
+        margin: 0;
+      }
+
+      .eyebrow {
+        color: var(--sea);
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        margin: 0 0 12px;
+        text-transform: uppercase;
+      }
+
+      .copy h2 {
+        font-size: 64px;
+        letter-spacing: -0.065em;
+        line-height: 0.94;
+        margin: 0 0 24px;
+      }
+
+      .copy p {
+        font-size: 24px;
+        line-height: 1.35;
+        margin: 0 0 24px;
+        max-width: 510px;
+      }
+
+      .pill {
+        background: linear-gradient(120deg, var(--amber), var(--amber-deep));
+        border-radius: 999px;
+        box-shadow: 0 14px 28px rgba(255, 143, 47, 0.28);
+        color: #2b1904;
+        display: inline-block;
+        font-size: 18px;
+        font-weight: 800;
+        padding: 16px 22px;
+      }
+
+      .browser {
+        align-self: center;
+        background: #ffffff;
+        border: 1px solid rgba(16, 34, 45, 0.14);
+        border-radius: 28px;
+        box-shadow: 0 26px 54px rgba(16, 34, 45, 0.16);
+        overflow: hidden;
+      }
+
+      .chrome {
+        align-items: center;
+        background: #f4f6f6;
+        display: flex;
+        gap: 8px;
+        height: 54px;
+        padding: 0 18px;
+      }
+
+      .dot {
+        border-radius: 50%;
+        height: 12px;
+        width: 12px;
+      }
+
+      .dot:nth-child(1) {
+        background: #ff6b57;
+      }
+
+      .dot:nth-child(2) {
+        background: #ffbd4a;
+      }
+
+      .dot:nth-child(3) {
+        background: #30c15d;
+      }
+
+      .url {
+        background: #ffffff;
+        border-radius: 999px;
+        color: #6b7377;
+        flex: 1;
+        font-size: 14px;
+        margin-left: 12px;
+        padding: 9px 16px;
+      }
+
+      .youtube {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: 1.25fr 0.78fr;
+        padding: 24px;
+      }
+
+      .video {
+        background: linear-gradient(135deg, #0f4f5f, #10222d);
+        border-radius: 20px;
+        height: 322px;
+        position: relative;
+      }
+
+      .video::after {
+        border-bottom: 38px solid transparent;
+        border-left: 58px solid #ffffff;
+        border-top: 38px solid transparent;
+        content: "";
+        left: 50%;
+        opacity: 0.9;
+        position: absolute;
+        top: 50%;
+        transform: translate(-42%, -50%);
+      }
+
+      .actions {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .que-button {
+        background: #f4fbff;
+        border: 1px solid rgba(15, 79, 95, 0.24);
+        border-radius: 999px;
+        color: var(--sea);
+        font-size: 18px;
+        font-weight: 800;
+        padding: 13px 18px;
+      }
+
+      .open-button {
+        background: linear-gradient(120deg, var(--amber), var(--amber-deep));
+        border-radius: 999px;
+        bottom: 26px;
+        box-shadow: 0 12px 24px rgba(255, 122, 47, 0.33);
+        color: #272522;
+        font-size: 17px;
+        font-weight: 900;
+        padding: 15px 21px;
+        position: absolute;
+        right: 26px;
+      }
+
+      .title {
+        background: #eef3f1;
+        border-radius: 10px;
+        height: 22px;
+        margin-top: 18px;
+        width: 76%;
+      }
+
+      .rec {
+        align-items: start;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 118px 1fr;
+        margin-bottom: 18px;
+      }
+
+      .thumb {
+        background: linear-gradient(135deg, #f3b351, #0f4f5f);
+        border-radius: 14px;
+        height: 72px;
+      }
+
+      .line {
+        background: #e7efec;
+        border-radius: 999px;
+        height: 12px;
+        margin: 3px 0 10px;
+      }
+
+      .line.short {
+        width: 66%;
+      }
+
+      .rec .que-button {
+        display: inline-block;
+        font-size: 13px;
+        padding: 9px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="frame">
+      <div class="copy">
+        <div class="brand">
+          <div class="mark">
+            <div class="q"><div class="play"></div></div>
+          </div>
+          <h1>QueUp</h1>
+        </div>
+        <p class="eyebrow">YouTube Watch Queue</p>
+        <h2>Queue now. Watch when ready.</h2>
+        <p>Add videos from YouTube pages and recommendations to a private playlist named Que. Watched videos clean themselves up.</p>
+        <span class="pill">Add to Que</span>
+      </div>
+
+      <div class="browser">
+        <div class="chrome">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="url">youtube.com/watch?v=...</span>
+        </div>
+        <div class="youtube">
+          <div>
+            <div class="video"><div class="open-button">Open Que Playlist</div></div>
+            <div class="actions">
+              <span class="que-button">Add to Que</span>
+              <span class="que-button">Remove from Que</span>
+            </div>
+            <div class="title"></div>
+          </div>
+          <aside>
+            <div class="rec">
+              <div class="thumb"></div>
+              <div>
+                <div class="line"></div>
+                <div class="line short"></div>
+                <span class="que-button">Add to Que</span>
+              </div>
+            </div>
+            <div class="rec">
+              <div class="thumb"></div>
+              <div>
+                <div class="line"></div>
+                <div class="line short"></div>
+                <span class="que-button">Add to Que</span>
+              </div>
+            </div>
+            <div class="rec">
+              <div class="thumb"></div>
+              <div>
+                <div class="line"></div>
+                <div class="line short"></div>
+                <span class="que-button">Add to Que</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>
