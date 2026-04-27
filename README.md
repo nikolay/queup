@@ -85,6 +85,11 @@ Required repository secrets:
 - `CWS_PUBLISHER_ID`: Chrome Web Store publisher ID from the Developer Dashboard account page.
 - `CWS_SERVICE_ACCOUNT_JSON`: JSON key for the Google Cloud service account granted Chrome Web Store API access in the Developer Dashboard.
 
+Required Google Cloud APIs:
+
+- Chrome Web Store API: `chromewebstore.googleapis.com`
+- IAM Service Account Credentials API: `iamcredentials.googleapis.com`
+
 The workflow uses Chrome Web Store API v2 to:
 
 1. Validate the extension files.
