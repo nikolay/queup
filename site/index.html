@@ -36,9 +36,20 @@
           QueUp adds an <strong>Add to Que</strong> or <strong>Remove from Que</strong> button to YouTube videos and recommendations, powered by a private playlist named <strong>Que</strong>.
         </p>
         <div class="cta-row">
-          <a class="btn primary" href="#install">Install QueUp</a>
-          <a class="btn ghost" href="https://www.youtube.com/" target="_blank" rel="noreferrer"
-            >Open YouTube</a
+          <a
+            class="btn primary"
+            href="https://chromewebstore.google.com/detail/queup/fldmblmmafcjlpgnoppjdpkfkkeejnkk"
+            target="_blank"
+            rel="noreferrer"
+            >Chrome Web Store</a
+          >
+          <a class="btn ghost" href="privacy.html">Privacy-first queueing</a>
+          <a
+            class="btn quiet"
+            href="https://github.com/nikolay/queup"
+            target="_blank"
+            rel="noreferrer"
+            >View source</a
           >
         </div>
       </section>
@@ -63,14 +74,30 @@
       </section>
 
       <section id="install" class="install">
-        <h2>Install Steps</h2>
-        <ol>
-          <li>Set your Google OAuth Client ID in <code>extension/manifest.json</code>.</li>
-          <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
-          <li>Enable <strong>Developer mode</strong> and click <strong>Load unpacked</strong>.</li>
-          <li>Select the <code>extension/</code> folder from this repo.</li>
-          <li>Open YouTube and use <strong>Add to Que</strong>.</li>
-        </ol>
+        <p class="status-pill">Chrome Web Store listing ready</p>
+        <h2>Install QueUp</h2>
+        <p>
+          QueUp is set up for the Chrome Web Store. If the listing is still under review, it will become installable from the same link after Chrome Web Store approval.
+        </p>
+        <div class="install-actions">
+          <a
+            class="btn primary"
+            href="https://chromewebstore.google.com/detail/queup/fldmblmmafcjlpgnoppjdpkfkkeejnkk"
+            target="_blank"
+            rel="noreferrer"
+            >Open listing</a
+          >
+          <a
+            class="btn ghost"
+            href="https://github.com/nikolay/queup#local-setup"
+            target="_blank"
+            rel="noreferrer"
+            >Developer install</a
+          >
+        </div>
+        <p class="note">
+          QueUp uses Google OAuth only to manage your own private <strong>Que</strong> playlist. No QueUp server stores your queue.
+        </p>
       </section>
     </main>
 
