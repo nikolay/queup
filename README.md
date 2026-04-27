@@ -94,6 +94,10 @@ Required Google Cloud APIs:
 - Chrome Web Store API: `chromewebstore.googleapis.com`
 - IAM Service Account Credentials API: `iamcredentials.googleapis.com`
 
+Required service account IAM binding:
+
+- `chrome-web-store-publisher@queup-nikolay-20260426.iam.gserviceaccount.com` needs `roles/iam.serviceAccountTokenCreator` on itself so GitHub Actions can mint a Chrome Web Store API access token from `CWS_SERVICE_ACCOUNT_JSON`.
+
 The workflow uses Chrome Web Store API v2 to:
 
 1. Validate the extension files.
