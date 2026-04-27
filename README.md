@@ -46,7 +46,8 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 - Publishing status: `Testing`
 - Chrome Web Store item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
 - Chrome Web Store uploads cannot include `manifest.key`; the publish workflow strips it from the packaged ZIP.
-- The OAuth client must be created for the Chrome Web Store item ID above before the published extension can authenticate.
+- The OAuth client is configured for the Chrome Web Store item ID above, and app ownership is verified in Google Auth Platform.
+- Local unpacked builds with a different generated extension ID need their own Chrome Extension OAuth client or the published item ID key.
 - Google Cloud's `gcloud iam oauth-clients` command is not suitable for this extension because it only supports Google Cloud/IAM scopes, not YouTube account scopes.
 
 ## Website deployment (`queup.io`)
