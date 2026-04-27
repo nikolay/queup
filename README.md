@@ -18,19 +18,35 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 
 ## Local setup
 
-1. Create a Google Cloud OAuth client for a Chrome Extension.
-2. Put the OAuth client id into `extension/manifest.json`:
-   - `oauth2.client_id = "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com"`
-3. Open `chrome://extensions`.
-4. Enable **Developer mode**.
-5. Click **Load unpacked** and select the `extension/` folder.
-6. Open YouTube and click **Add to Que** on a video.
+1. Create or select a Google Cloud project.
+2. Enable **YouTube Data API v3** (`youtube.googleapis.com`).
+3. Configure Google Auth Platform for the app:
+   - App name: `QueUp`
+   - Homepage: `https://queup.io`
+   - Privacy policy: `https://queup.io/privacy.html`
+   - Scope: `https://www.googleapis.com/auth/youtube`
+4. Create an OAuth client:
+   - Application type: **Chrome Extension**
+   - Name: `QueUp Chrome Extension`
+   - Item ID: `cbkkoajgjkbfmnihnaoeoggiilibajkj`
+5. Put the OAuth client id into `extension/manifest.json`.
+6. While the OAuth app is in **Testing** mode, add each Google account that will use the extension as a test user in Google Auth Platform > Audience.
+7. Open `chrome://extensions`.
+8. Enable **Developer mode**.
+9. Click **Load unpacked** and select the `extension/` folder.
+10. Open YouTube and click **Add to Que** on a video.
 
 ## OAuth notes
 
 - Scope used: `https://www.googleapis.com/auth/youtube`
 - API used: YouTube Data API v3
 - Required Google Cloud service: **YouTube Data API v3**
+- Google Cloud project: `queup-nikolay-20260426`
+- OAuth client id: `340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com`
+- Publishing status: `Testing`
+- Stable local Chrome extension ID: `cbkkoajgjkbfmnihnaoeoggiilibajkj`
+- The extension ID is pinned by the public `key` field in `extension/manifest.json`.
+- Google Cloud's `gcloud iam oauth-clients` command is not suitable for this extension because it only supports Google Cloud/IAM scopes, not YouTube account scopes.
 
 ## Website deployment (`queup.io`)
 
