@@ -70,14 +70,18 @@ Chrome Web Store updates are handled by `.github/workflows/chrome-web-store.yml`
 
 The first Chrome Web Store item still needs to be created manually in the Developer Dashboard. After that item exists, this workflow can upload and submit new extension versions through the Chrome Web Store API.
 
-The workflow runs when a tag matching `extension-v*` is pushed. The tag must match the extension manifest version. For example:
+The publish workflow runs when a tag matching `extension-v*` is pushed. The tag must match the extension manifest version.
+
+To cut a release, run the `Tag Extension Release` workflow from GitHub Actions and check `confirm_publish`. It reads the version from `extension/manifest.json`, creates `extension-v<version>`, and pushes the tag. That tag then triggers the Chrome Web Store publish workflow.
+
+The equivalent local commands are:
 
 ```bash
 git tag extension-v1.0.0
 git push origin extension-v1.0.0
 ```
 
-The workflow can also be run manually from GitHub Actions.
+The publish workflow can also be run manually from GitHub Actions without creating a tag.
 
 Required repository secrets:
 

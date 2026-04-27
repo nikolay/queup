@@ -1,0 +1,65 @@
+name: Tag Extension Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_publish:
+        description: "Create extension-v<manifest version> and trigger Chrome Web Store publishing"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-extension-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require publish confirmation
+        run: |
+          if [ "${{ inputs.confirm_publish }}" != "true" ]; then
+            echo "Check confirm_publish to create the release tag. The tag will trigger Chrome Web Store publishing." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Read extension version
+        id: extension
+        run: |
+          version="$(node -p "require('./extension/manifest.json').version")"
+          tag="extension-v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Preparing ${tag}"
+
+      - name: Ensure tag does not already exist
+        run: |
+          tag="${{ steps.extension.outputs.tag }}"
+          git fetch --tags --force
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists locally." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin." >&2
+            exit 1
+          fi
+
+      - name: Create and push release tag
+        run: |
+          version="${{ steps.extension.outputs.version }}"
+          tag="${{ steps.extension.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "Release QueUp extension ${version}"
+          git push origin "refs/tags/${tag}"
