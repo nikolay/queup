@@ -73,27 +73,69 @@ jobs:
           token_format: access_token
           access_token_scopes: https://www.googleapis.com/auth/chromewebstore
 
+      - name: Verify Chrome Web Store item exists
+        run: |
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:fetchStatus")"
+          cat "${response_file}"
+          if [ "${status}" = "403" ] || [ "${status}" = "404" ]; then
+            echo "::error::Chrome Web Store item ${{ secrets.CWS_EXTENSION_ID }} was not found or is not accessible to the configured service account. Create the first item manually in the Developer Dashboard, then rerun this workflow for updates."
+            exit 1
+          fi
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store item preflight failed with HTTP ${status}."
+            exit 1
+          fi
+
       - name: Upload package to Chrome Web Store
         run: |
-          curl -fsS --retry 3 --retry-delay 5 \
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
             -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
             -X POST \
             -T "${{ steps.extension.outputs.package }}" \
-            "https://chromewebstore.googleapis.com/upload/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:upload"
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:upload")"
+          cat "${response_file}"
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store upload failed with HTTP ${status}."
+            exit 1
+          fi
 
       - name: Fetch upload status
         run: |
-          curl -fsS --retry 3 --retry-delay 5 \
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
             -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
-            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:fetchStatus"
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:fetchStatus")"
+          cat "${response_file}"
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store status fetch failed with HTTP ${status}."
+            exit 1
+          fi
 
       - name: Submit for review
         if: github.event_name != 'workflow_dispatch' || inputs.submit_for_review
         run: |
           publish_type="${{ inputs.publish_type || 'STAGED_PUBLISH' }}"
-          curl -fsS --retry 3 --retry-delay 5 \
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
             -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
             -H "Content-Type: application/json" \
             -X POST \
             -d "{\"publishType\":\"${publish_type}\"}" \
-            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:publish"
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:publish")"
+          cat "${response_file}"
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store publish failed with HTTP ${status}."
+            exit 1
+          fi
