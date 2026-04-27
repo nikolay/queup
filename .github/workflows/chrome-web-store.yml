@@ -1,0 +1,99 @@
+name: Publish Chrome Extension
+
+on:
+  push:
+    tags:
+      - "extension-v*"
+  workflow_dispatch:
+    inputs:
+      publish_type:
+        description: "Publish behavior after review"
+        required: true
+        default: "STAGED_PUBLISH"
+        type: choice
+        options:
+          - "STAGED_PUBLISH"
+          - "DEFAULT_PUBLISH"
+      submit_for_review:
+        description: "Submit the uploaded package for Chrome Web Store review"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read extension version
+        id: extension
+        run: |
+          version="$(node -p "require('./extension/manifest.json').version")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "package=queup-chrome-extension-${version}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tag matches manifest version
+        if: github.ref_type == 'tag'
+        run: |
+          expected="extension-v${{ steps.extension.outputs.version }}"
+          actual="${GITHUB_REF_NAME}"
+          if [ "$actual" != "$expected" ]; then
+            echo "Tag must match manifest version. Expected ${expected}, got ${actual}." >&2
+            exit 1
+          fi
+
+      - name: Validate extension
+        run: |
+          python3 -m json.tool extension/manifest.json >/dev/null
+          node --check extension/background.js
+          node --check extension/content.js
+          node --check extension/popup.js
+
+      - name: Package extension
+        run: |
+          cd extension
+          zip -r "../${{ steps.extension.outputs.package }}" . \
+            -x "*.DS_Store" \
+            -x "__MACOSX/*"
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+
+      - name: Upload package to Chrome Web Store
+        run: |
+          curl -fsS --retry 3 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            -X POST \
+            -T "${{ steps.extension.outputs.package }}" \
+            "https://chromewebstore.googleapis.com/upload/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:upload"
+
+      - name: Fetch upload status
+        run: |
+          curl -fsS --retry 3 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:fetchStatus"
+
+      - name: Submit for review
+        if: github.event_name != 'workflow_dispatch' || inputs.submit_for_review
+        run: |
+          publish_type="${{ inputs.publish_type || 'STAGED_PUBLISH' }}"
+          curl -fsS --retry 3 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"publishType\":\"${publish_type}\"}" \
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:publish"

@@ -63,3 +63,34 @@ The workflow excludes `site/CNAME` so the project page stays available at:
 - `https://nikolay.github.io/queup/`
 
 When DNS for `queup.io` is ready, deploy `site/CNAME` with the site artifact or configure the custom domain in GitHub Pages settings.
+
+## Chrome Web Store deployment
+
+Chrome Web Store updates are handled by `.github/workflows/chrome-web-store.yml`.
+
+The first Chrome Web Store item still needs to be created manually in the Developer Dashboard. After that item exists, this workflow can upload and submit new extension versions through the Chrome Web Store API.
+
+The workflow runs when a tag matching `extension-v*` is pushed. The tag must match the extension manifest version. For example:
+
+```bash
+git tag extension-v1.0.0
+git push origin extension-v1.0.0
+```
+
+The workflow can also be run manually from GitHub Actions.
+
+Required repository secrets:
+
+- `CWS_EXTENSION_ID`: Chrome Web Store item ID. The configured local extension ID is `cbkkoajgjkbfmnihnaoeoggiilibajkj`.
+- `CWS_PUBLISHER_ID`: Chrome Web Store publisher ID from the Developer Dashboard account page.
+- `CWS_SERVICE_ACCOUNT_JSON`: JSON key for the Google Cloud service account granted Chrome Web Store API access in the Developer Dashboard.
+
+The workflow uses Chrome Web Store API v2 to:
+
+1. Validate the extension files.
+2. Zip the contents of `extension/`.
+3. Upload the package to the existing Chrome Web Store item.
+4. Fetch upload status.
+5. Submit the item for review.
+
+By default, manual and tag-triggered submissions use `STAGED_PUBLISH`, so approved updates are staged for manual release instead of immediately published.
