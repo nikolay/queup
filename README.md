@@ -28,7 +28,7 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 4. Create an OAuth client:
    - Application type: **Chrome Extension**
    - Name: `QueUp Chrome Extension`
-   - Item ID: `cbkkoajgjkbfmnihnaoeoggiilibajkj`
+   - Item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
 5. Put the OAuth client id into `extension/manifest.json`.
 6. While the OAuth app is in **Testing** mode, add each Google account that will use the extension as a test user in Google Auth Platform > Audience.
 7. Open `chrome://extensions`.
@@ -44,8 +44,9 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 - Google Cloud project: `queup-nikolay-20260426`
 - OAuth client id: `340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com`
 - Publishing status: `Testing`
-- Stable local Chrome extension ID: `cbkkoajgjkbfmnihnaoeoggiilibajkj`
-- The extension ID is pinned by the public `key` field in `extension/manifest.json`.
+- Chrome Web Store item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
+- Chrome Web Store uploads cannot include `manifest.key`; the publish workflow strips it from the packaged ZIP.
+- The OAuth client must be created for the Chrome Web Store item ID above before the published extension can authenticate.
 - Google Cloud's `gcloud iam oauth-clients` command is not suitable for this extension because it only supports Google Cloud/IAM scopes, not YouTube account scopes.
 
 ## Website deployment (`queup.io`)
@@ -68,7 +69,7 @@ When DNS for `queup.io` is ready, deploy `site/CNAME` with the site artifact or 
 
 Chrome Web Store updates are handled by `.github/workflows/chrome-web-store.yml`.
 
-The first Chrome Web Store item still needs to be created manually in the Developer Dashboard. After that item exists, this workflow can upload and submit new extension versions through the Chrome Web Store API.
+The first Chrome Web Store item has been created manually in the Developer Dashboard. The workflow uploads and submits new extension versions through the Chrome Web Store API.
 
 The publish workflow runs when a tag matching `extension-v*` is pushed. The tag must match the extension manifest version.
 
@@ -85,7 +86,7 @@ The publish workflow can also be run manually from GitHub Actions without creati
 
 Required repository secrets:
 
-- `CWS_EXTENSION_ID`: Chrome Web Store item ID. The configured local extension ID is `cbkkoajgjkbfmnihnaoeoggiilibajkj`.
+- `CWS_EXTENSION_ID`: Chrome Web Store item ID, currently `fldmblmmafcjlpgnoppjdpkfkkeejnkk`.
 - `CWS_PUBLISHER_ID`: Chrome Web Store publisher ID from the Developer Dashboard account page.
 - `CWS_SERVICE_ACCOUNT_JSON`: JSON key for the Google Cloud service account granted Chrome Web Store API access in the Developer Dashboard.
 
@@ -101,7 +102,7 @@ Required service account IAM binding:
 The workflow uses Chrome Web Store API v2 to:
 
 1. Validate the extension files.
-2. Zip the contents of `extension/`.
+2. Zip the contents of `extension/`, with `manifest.key` removed for Chrome Web Store compatibility.
 3. Upload the package to the existing Chrome Web Store item.
 4. Fetch upload status.
 5. Submit the item for review.

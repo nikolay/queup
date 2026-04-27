@@ -60,8 +60,11 @@ jobs:
 
       - name: Package extension
         run: |
-          cd extension
-          zip -r "../${{ steps.extension.outputs.package }}" . \
+          package_dir="$(mktemp -d)"
+          cp -R extension/. "${package_dir}/"
+          node -e "const fs = require('fs'); const path = '${package_dir}/manifest.json'; const manifest = JSON.parse(fs.readFileSync(path, 'utf8')); delete manifest.key; fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');"
+          cd "${package_dir}"
+          zip -r "${GITHUB_WORKSPACE}/${{ steps.extension.outputs.package }}" . \
             -x "*.DS_Store" \
             -x "__MACOSX/*"
 
