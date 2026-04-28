@@ -79,8 +79,9 @@ To cut a release, run the `Tag Extension Release` workflow from GitHub Actions a
 The equivalent local commands are:
 
 ```bash
-git tag extension-v1.0.0
-git push origin extension-v1.0.0
+version="$(node -p "require('./extension/manifest.json').version")"
+git tag "extension-v${version}"
+git push origin "extension-v${version}"
 ```
 
 The publish workflow can also be run manually from GitHub Actions without creating a tag.
@@ -123,3 +124,7 @@ openssl rsa -in privatekey.pem -pubout -out publickey.pem
 Opt in from the Chrome Web Store Developer Dashboard package tab using the public key. Store the private key as the `CWS_CRX_PRIVATE_KEY` repository secret. Once that secret exists, `.github/workflows/chrome-web-store.yml` signs the stripped extension package with Chrome and uploads the resulting `.crx` with the required Chrome Web Store API headers.
 
 Keep the private key somewhere secure outside the repository. If it is lost, Chrome Web Store support must help replace it before future uploads can continue.
+
+## Troubleshooting OAuth
+
+QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If buttons do not open a Google prompt, open the QueUp toolbar popup, click **Connect YouTube**, and confirm Chrome is signed into the Google account that owns your YouTube playlists.

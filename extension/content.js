@@ -3,13 +3,17 @@
   const VIDEO_STATUSES = new Map();
   const AUTO_REMOVED = new Set();
   const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+  const MESSAGE_TIMEOUT_MS = 75 * 1000;
   const TEXT = {
     add: "Add to Que",
     remove: "Remove from Que",
     updating: "Updating...",
+    signingIn: "Signing in...",
     openQueue: "Open Que Playlist",
     signInOpenQueue: "Sign in to open Que",
-    signInRequired: "Sign in required"
+    signInRequired: "Open QueUp to sign in",
+    timedOut: "QueUp timed out",
+    failed: "QueUp error"
   };
   const STATUS_SYNC_SKIP_MS = 15 * 1000;
   const WATCHED_PROGRESS_RATIO = 0.98;
@@ -52,9 +56,27 @@
     }
   }
 
-  function sendMessage(message) {
+  function sendMessage(message, options = {}) {
+    const timeoutMs = options.timeoutMs || MESSAGE_TIMEOUT_MS;
+
     return new Promise((resolve) => {
+      let settled = false;
+      const timeoutId = window.setTimeout(() => {
+        settled = true;
+        resolve({
+          ok: false,
+          timedOut: true,
+          error: "QueUp timed out waiting for the background worker. Open the QueUp toolbar popup and try Connect YouTube."
+        });
+      }, timeoutMs);
+
       chrome.runtime.sendMessage(message, (response) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        window.clearTimeout(timeoutId);
+
         if (chrome.runtime.lastError) {
           resolve({
             ok: false,
@@ -91,7 +113,7 @@
     const loading = button.dataset.queupLoading === "true";
 
     if (loading) {
-      button.textContent = TEXT.updating;
+      button.textContent = button.dataset.queupLoadingText || TEXT.updating;
     } else {
       button.textContent = inQueue ? TEXT.remove : TEXT.add;
     }
@@ -110,15 +132,41 @@
     }
   }
 
-  function setLoading(videoId, loading) {
+  function setLoading(videoId, loading, text = TEXT.updating) {
     const buttons = BUTTON_GROUPS.get(videoId);
     if (!buttons) {
       return;
     }
     for (const button of buttons) {
       button.dataset.queupLoading = loading ? "true" : "false";
+      button.dataset.queupLoadingText = loading ? text : "";
       renderButton(button);
     }
+  }
+
+  function flashButtonMessage(button, text, title = "", duration = 3200) {
+    button.dataset.queupLoading = "false";
+    button.dataset.queupLoadingText = "";
+    button.disabled = false;
+    button.textContent = text;
+    if (title) {
+      button.title = title;
+      console.warn("[QueUp]", title);
+    }
+    window.setTimeout(() => {
+      button.title = "";
+      renderButton(button);
+    }, duration);
+  }
+
+  function buttonMessageForError(response) {
+    if (response?.requiresAuth) {
+      return TEXT.signInRequired;
+    }
+    if (response?.timedOut || String(response?.error || "").includes("Timed out")) {
+      return TEXT.timedOut;
+    }
+    return TEXT.failed;
   }
 
   function bindButton(button, videoId) {
@@ -151,7 +199,7 @@
     }
 
     const inQueue = VIDEO_STATUSES.get(videoId) === true;
-    setLoading(videoId, true);
+    setLoading(videoId, true, inQueue ? TEXT.updating : TEXT.signingIn);
 
     const response = await sendMessage({
       type: inQueue ? "REMOVE_VIDEO" : "ADD_VIDEO",
@@ -162,10 +210,11 @@
     setLoading(videoId, false);
 
     if (!response?.ok) {
-      if (response?.requiresAuth) {
-        button.textContent = TEXT.signInRequired;
-        window.setTimeout(() => renderButton(button), 1600);
-      }
+      flashButtonMessage(
+        button,
+        buttonMessageForError(response),
+        response?.userMessage || response?.error || "Unable to update Que."
+      );
       return;
     }
 
@@ -247,9 +296,11 @@
       const response = await sendMessage({ type: "OPEN_QUEUE" });
       button.disabled = false;
       if (!response?.ok) {
-        button.textContent = TEXT.signInOpenQueue;
+        button.textContent = response?.requiresAuth ? TEXT.signInOpenQueue : TEXT.failed;
+        button.title = response?.userMessage || response?.error || "Unable to open Que playlist.";
         window.setTimeout(() => {
           button.textContent = TEXT.openQueue;
+          button.title = "";
         }, 1700);
       }
     });

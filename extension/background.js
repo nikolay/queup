@@ -3,6 +3,10 @@ const STATE_KEY = "queupState";
 const QUEUE_TITLE = "Que";
 const QUEUE_DESCRIPTION = "Videos saved with QueUp.";
 const QUEUE_CACHE_TTL_MS = 2 * 60 * 1000;
+const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
+const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
+const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
+const API_REQUEST_TIMEOUT_MS = 25 * 1000;
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 
 let memoryState = null;
@@ -35,27 +39,101 @@ async function setState(patch) {
 function isLikelyAuthError(error) {
   const message = String(error?.message || "");
   const authSnippets = [
+    "access_denied",
+    "Access denied",
+    "Authorization",
+    "Google sign-in",
+    "No primary account",
     "OAuth2 not granted",
+    "OAuth",
     "User interaction required",
     "The user did not approve",
     "No auth token",
     "Authentication token",
+    "not authorized",
     "not signed in",
+    "not granted or revoked",
     "invalid_grant"
   ];
   return authSnippets.some((snippet) => message.includes(snippet));
 }
 
-function getAuthToken(interactive = false) {
+function withTimeout(promise, timeoutMs, timeoutMessage) {
   return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        reject(new Error(chrome.runtime.lastError?.message || "No auth token."));
-        return;
-      }
-      resolve(token);
-    });
+    const timeoutId = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    Promise.resolve(promise)
+      .then(resolve, reject)
+      .finally(() => clearTimeout(timeoutId));
   });
+}
+
+function extractAuthToken(result) {
+  if (typeof result === "string") {
+    return result;
+  }
+  return result?.token || null;
+}
+
+async function getAuthToken(interactive = false) {
+  const timeoutMs = interactive ? INTERACTIVE_AUTH_TIMEOUT_MS : SILENT_AUTH_TIMEOUT_MS;
+  const timeoutMessage = interactive
+    ? "Timed out waiting for Google sign-in. Open QueUp from the Chrome toolbar, click Connect YouTube, and make sure Chrome is signed into the Google account you use for YouTube."
+    : "No cached Google sign-in is available yet.";
+  const details = {
+    interactive: Boolean(interactive),
+    scopes: [YOUTUBE_SCOPE],
+    enableGranularPermissions: true
+  };
+
+  try {
+    const maybePromise = chrome.identity.getAuthToken(details);
+    if (maybePromise && typeof maybePromise.then === "function") {
+      const result = await withTimeout(maybePromise, timeoutMs, timeoutMessage);
+      const token = extractAuthToken(result);
+      if (!token) {
+        throw new Error("No auth token.");
+      }
+      return token;
+    }
+  } catch (error) {
+    throw new Error(error?.message || "Unable to get Google auth token.");
+  }
+
+  return withTimeout(
+    new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken(details, (token) => {
+        if (chrome.runtime.lastError || !token) {
+          reject(new Error(chrome.runtime.lastError?.message || "No auth token."));
+          return;
+        }
+        resolve(token);
+      });
+    }),
+    timeoutMs,
+    timeoutMessage
+  );
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Timed out contacting the YouTube API.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function removeCachedToken(token) {
@@ -73,7 +151,7 @@ async function youtubeRequest(endpoint, options = {}) {
   } = options;
 
   const token = await getAuthToken(interactive);
-  const response = await fetch(`${API_ROOT}${endpoint}`, {
+  const response = await fetchWithTimeout(`${API_ROOT}${endpoint}`, {
     method,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -89,7 +167,15 @@ async function youtubeRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    const error = new Error(`YouTube API error ${response.status}: ${text}`);
+    let apiMessage = text;
+    try {
+      const parsed = JSON.parse(text);
+      apiMessage = parsed?.error?.message || text;
+    } catch (_error) {
+      // Keep the raw API body when it is not JSON.
+    }
+
+    const error = new Error(`YouTube API error ${response.status}: ${apiMessage}`);
     error.status = response.status;
     throw error;
   }
@@ -170,7 +256,7 @@ async function ensureQueuePlaylist(options = {}) {
     if (!createIfMissing) {
       return null;
     }
-    const playlistId = await createQueuePlaylist(true);
+    const playlistId = await createQueuePlaylist(interactive);
     await setState({ playlistId });
     return playlistId;
   }
@@ -297,18 +383,19 @@ async function getVideoStates(videoIds) {
   };
 }
 
-async function addVideoToQueue(videoId) {
+async function addVideoToQueue(videoId, options = {}) {
   const normalizedId = sanitizeVideoId(videoId);
   if (!normalizedId) {
     throw new Error("Invalid YouTube video id.");
   }
 
+  const { interactive = true } = options;
   const playlistId = await ensureQueuePlaylist({
-    interactive: true,
+    interactive,
     createIfMissing: true
   });
 
-  const queueMap = await fetchQueueMap({ interactive: true });
+  const queueMap = await fetchQueueMap({ interactive });
   if (queueMap[normalizedId]) {
     return {
       changed: false,
@@ -331,7 +418,7 @@ async function addVideoToQueue(videoId) {
   const created = await youtubeRequest("/playlistItems?part=snippet", {
     method: "POST",
     body,
-    interactive: true
+    interactive
   });
 
   queueMap[normalizedId] = created.id;
@@ -418,12 +505,34 @@ async function openQueuePlaylist() {
   return { playlistId, url };
 }
 
+async function authenticate() {
+  const playlistId = await ensureQueuePlaylist({
+    interactive: true,
+    forceRefresh: true,
+    createIfMissing: true
+  });
+  const queueMap = await fetchQueueMap({
+    interactive: true,
+    force: true
+  });
+
+  return {
+    playlistId,
+    queueSize: Object.keys(queueMap).length,
+    url: queueUrl(playlistId)
+  };
+}
+
 function asResponseError(error) {
   const message = String(error?.message || "Unknown error.");
+  const requiresAuth = isLikelyAuthError(error);
   return {
     ok: false,
     error: message,
-    requiresAuth: isLikelyAuthError(error)
+    requiresAuth,
+    userMessage: requiresAuth
+      ? "Connect YouTube from the QueUp toolbar popup. If no Google prompt opens, sign into Chrome with the Google account you use for YouTube first."
+      : message
   };
 }
 
@@ -442,7 +551,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (type === "ADD_VIDEO") {
-      const result = await addVideoToQueue(message.videoId);
+      const result = await addVideoToQueue(message.videoId, {
+        interactive: message.interactive !== false
+      });
       sendResponse({ ok: true, ...result });
       return;
     }
@@ -457,6 +568,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     if (type === "OPEN_QUEUE") {
       const result = await openQueuePlaylist();
+      sendResponse({ ok: true, ...result });
+      return;
+    }
+
+    if (type === "AUTHENTICATE") {
+      const result = await authenticate();
       sendResponse({ ok: true, ...result });
       return;
     }
