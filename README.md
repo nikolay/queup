@@ -112,6 +112,8 @@ The workflow uses Chrome Web Store API v2 to:
 
 By default, tag-triggered submissions use `DEFAULT_PUBLISH`, so approved updates publish automatically after Chrome Web Store review. Manual workflow runs can still choose `STAGED_PUBLISH` when you want an approved update to wait for manual release.
 
+If an update was submitted with `STAGED_PUBLISH` and has already passed review, run the `Release Approved Chrome Extension` workflow to publish the approved staged item without uploading a new package.
+
 ### Verified CRX uploads
 
 Chrome Web Store Verified CRX uploads require every future package upload to be a signed `.crx` file. Generate a signing key pair with:

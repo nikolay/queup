@@ -1,0 +1,54 @@
+name: Release Approved Chrome Extension
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+
+      - name: Fetch Chrome Web Store status
+        run: |
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:fetchStatus")"
+          cat "${response_file}"
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store status fetch failed with HTTP ${status}."
+            exit 1
+          fi
+
+      - name: Release approved item
+        run: |
+          response_file="$(mktemp)"
+          status="$(curl -sS --retry 3 --retry-delay 5 \
+            -o "${response_file}" \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.access_token }}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"publishType":"DEFAULT_PUBLISH"}' \
+            "https://chromewebstore.googleapis.com/v2/publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}:publish")"
+          cat "${response_file}"
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Chrome Web Store release failed with HTTP ${status}."
+            exit 1
+          fi
