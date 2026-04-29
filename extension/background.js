@@ -1,8 +1,10 @@
 const API_ROOT = "https://www.googleapis.com/youtube/v3";
 const STATE_KEY = "queupState";
+const SESSION_AUTH_KEY = "queupSessionAuth";
 const QUEUE_TITLE = "Que";
 const QUEUE_DESCRIPTION = "Videos saved with QueUp.";
 const QUEUE_CACHE_TTL_MS = 2 * 60 * 1000;
+const SESSION_AUTH_EXPIRY_SKEW_MS = 60 * 1000;
 const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
 const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
 const API_REQUEST_TIMEOUT_MS = 25 * 1000;
@@ -16,6 +18,7 @@ const INTERACTIVE_MESSAGE_TYPES = new Set([
 ]);
 
 let memoryState = null;
+let memorySessionAuth = null;
 
 function defaultState() {
   return {
@@ -98,13 +101,81 @@ async function getAuthToken(interactive = false) {
     interactive: Boolean(interactive)
   };
 
-  const result = await withTimeout(chrome.identity.getAuthToken(details), timeoutMs, timeoutMessage);
+  const result = await withTimeout(
+    new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken(details, (tokenResult, grantedScopes) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message || "No auth token."));
+          return;
+        }
+        resolve(typeof tokenResult === "string" ? tokenResult : { ...tokenResult, grantedScopes });
+      });
+    }),
+    timeoutMs,
+    timeoutMessage
+  );
   const token = extractAuthToken(result);
   if (!token) {
     throw new Error("Chrome identity did not return an auth token.");
   }
 
   return token;
+}
+
+async function getSessionAuth() {
+  if (chrome.storage?.session) {
+    const stored = await chrome.storage.session.get(SESSION_AUTH_KEY);
+    memorySessionAuth = stored[SESSION_AUTH_KEY] || memorySessionAuth;
+  }
+  return memorySessionAuth;
+}
+
+async function setSessionAuth(token, expiresInSeconds = 3600) {
+  const expiresInMs = Math.max(60, Number(expiresInSeconds) || 3600) * 1000;
+  const auth = {
+    token,
+    expiresAt: Date.now() + expiresInMs - SESSION_AUTH_EXPIRY_SKEW_MS
+  };
+  memorySessionAuth = auth;
+  if (chrome.storage?.session) {
+    await chrome.storage.session.set({ [SESSION_AUTH_KEY]: auth });
+  }
+}
+
+async function clearSessionAuth() {
+  memorySessionAuth = null;
+  if (chrome.storage?.session) {
+    await chrome.storage.session.remove(SESSION_AUTH_KEY);
+  }
+}
+
+async function getUsableSessionToken() {
+  const auth = await getSessionAuth();
+  if (!auth?.token) {
+    return null;
+  }
+
+  if (auth.expiresAt && auth.expiresAt > Date.now()) {
+    return auth.token;
+  }
+
+  await clearSessionAuth();
+  return null;
+}
+
+async function getRequestAuth(interactive = false) {
+  const sessionToken = await getUsableSessionToken();
+  if (sessionToken) {
+    return {
+      source: "session",
+      token: sessionToken
+    };
+  }
+
+  return {
+    source: "chromeIdentity",
+    token: await getAuthToken(interactive)
+  };
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -191,7 +262,8 @@ async function youtubeRequest(endpoint, options = {}) {
     retry = true
   } = options;
 
-  const token = await getAuthToken(interactive);
+  const auth = await getRequestAuth(interactive);
+  const token = auth.token;
   const response = await fetchWithTimeout(`${API_ROOT}${endpoint}`, {
     method,
     headers: {
@@ -202,7 +274,11 @@ async function youtubeRequest(endpoint, options = {}) {
   });
 
   if (response.status === 401 && retry) {
-    await removeCachedToken(token);
+    if (auth.source === "session") {
+      await clearSessionAuth();
+    } else {
+      await removeCachedToken(token);
+    }
     return youtubeRequest(endpoint, { method, body, interactive, retry: false });
   }
 
@@ -627,6 +703,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (type === "AUTHENTICATE") {
+      if (message.accessToken) {
+        await setSessionAuth(message.accessToken, message.expiresInSeconds);
+      }
       const result = await authenticate({
         interactive: message.interactive !== false
       });
@@ -654,6 +733,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         lastError: state.lastError || null,
         playlistId: state.playlistId || null,
         queueSize: Object.keys(state.queueMap || {}).length,
+        sessionAuthActive: Boolean(await getUsableSessionToken()),
         version: chrome.runtime.getManifest().version
       });
       return;

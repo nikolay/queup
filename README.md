@@ -134,4 +134,4 @@ Keep the private key somewhere secure outside the repository. If it is lost, Chr
 
 ## Troubleshooting OAuth
 
-QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If buttons do not open a Google prompt, open the QueUp toolbar popup, click **Connect YouTube**, and confirm Chrome is signed into the Google account that owns your YouTube playlists. The setup page requests the manifest-declared YouTube scope directly from Chrome and shows the raw Chrome identity error if Chrome rejects the request before showing Google's consent prompt.
+QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If Chrome's built-in prompt does not open, the setup page falls back to `chrome.identity.launchWebAuthFlow` and opens a Google sign-in window. The fallback keeps the returned access token in Chrome session storage only, so it is not persisted after the browser session.
