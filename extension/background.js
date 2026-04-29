@@ -3,7 +3,6 @@ const STATE_KEY = "queupState";
 const QUEUE_TITLE = "Que";
 const QUEUE_DESCRIPTION = "Videos saved with QueUp.";
 const QUEUE_CACHE_TTL_MS = 2 * 60 * 1000;
-const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
 const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
 const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
 const API_REQUEST_TIMEOUT_MS = 25 * 1000;
@@ -96,9 +95,7 @@ async function getAuthToken(interactive = false) {
     ? "Timed out waiting for Google sign-in. Open QueUp from the Chrome toolbar, click Connect YouTube, and make sure Chrome is signed into the Google account you use for YouTube."
     : "No cached Google sign-in is available yet.";
   const details = {
-    interactive: Boolean(interactive),
-    scopes: [YOUTUBE_SCOPE],
-    enableGranularPermissions: true
+    interactive: Boolean(interactive)
   };
 
   const result = await withTimeout(chrome.identity.getAuthToken(details), timeoutMs, timeoutMessage);

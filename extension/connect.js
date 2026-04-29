@@ -45,16 +45,10 @@ function withTimeout(promise, timeoutMs, timeoutMessage) {
   });
 }
 
-async function resetChromeIdentityCache() {
-  await chrome.identity.clearAllCachedAuthTokens();
-}
-
 async function getAuthTokenInteractive() {
   const result = await withTimeout(
     chrome.identity.getAuthToken({
-      interactive: true,
-      scopes: [YOUTUBE_SCOPE],
-      enableGranularPermissions: true
+      interactive: true
     }),
     AUTH_TIMEOUT_MS,
     "Timed out waiting for Google consent. If no prompt appeared, confirm this Chrome profile is signed into the Google account you use for YouTube."
@@ -66,6 +60,16 @@ async function getAuthTokenInteractive() {
   }
 
   return auth;
+}
+
+function diagnosticDetails(error) {
+  return [
+    `Installed QueUp version: ${manifest.version || "unknown"}`,
+    `Extension ID: ${chrome.runtime.id}`,
+    `Chrome identity error: ${error?.message || "Unknown error."}`,
+    "",
+    "If Chrome still does not show a prompt, open Chrome settings and make sure this Chrome profile is signed into the Google account you use for YouTube, then try again."
+  ].join("\n");
 }
 
 function sendMessage(message) {
@@ -83,11 +87,9 @@ function sendMessage(message) {
 connectButton.addEventListener("click", async () => {
   setBusy(true);
   setDetails("");
-  setStatus("Resetting QueUp's cached Google authorization...");
+  setStatus("Opening Google consent prompt...");
 
   try {
-    await resetChromeIdentityCache();
-    setStatus("Opening Google consent prompt...");
     const auth = await getAuthTokenInteractive();
     setStatus("Google granted access. Preparing your Que playlist...");
 
@@ -100,7 +102,7 @@ connectButton.addEventListener("click", async () => {
     setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nGranted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
   } catch (error) {
     setStatus(error?.message || "Unable to connect YouTube.", true);
-    setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nExtension ID: ${chrome.runtime.id}\n\nIf Chrome did not show a prompt, open Chrome settings and make sure this Chrome profile is signed into the Google account you use for YouTube, then try again.`);
+    setDetails(diagnosticDetails(error));
   } finally {
     setBusy(false);
   }
