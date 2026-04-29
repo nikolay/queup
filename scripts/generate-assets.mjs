@@ -140,5 +140,10 @@ for (const size of [16, 32, 48, 128]) {
   writeFileSync(path, drawIcon(size));
 }
 
+mkdirSync(resolve(root, "site/assets"), { recursive: true });
+for (const size of [16, 32, 48, 128]) {
+  copyFileSync(resolve(root, `extension/icons/icon-${size}.png`), resolve(root, `site/assets/icon-${size}.png`));
+}
+
 mkdirSync(resolve(root, "store-assets"), { recursive: true });
 copyFileSync(resolve(root, "extension/icons/icon-128.png"), resolve(root, "store-assets/queup-store-icon-128.png"));

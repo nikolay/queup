@@ -1,6 +1,6 @@
 # QueUp
 
-QueUp is a Chrome Extension + static website that turns a private YouTube playlist named **Que** into your watch queue.
+QueUp is a Chrome Extension + static website at <https://queup.io> that turns a private YouTube playlist named **Que** into your watch queue.
 
 ## Project layout
 
@@ -9,7 +9,7 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 
 ## What the extension does
 
-- Adds **Add to Que** / **Remove from Que** actions to:
+- Adds compact **+ Que** / **- Que** actions to:
   - the current watch page video
   - recommended and feed video cards
 - Uses a private YouTube playlist named **Que** as storage.
@@ -34,7 +34,7 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 7. Open `chrome://extensions`.
 8. Enable **Developer mode**.
 9. Click **Load unpacked** and select the `extension/` folder.
-10. Open YouTube and click **Add to Que** on a video.
+10. Open YouTube, connect YouTube from the QueUp toolbar popup, and click **+ Que** on a video.
 
 ## OAuth notes
 
@@ -43,7 +43,8 @@ QueUp is a Chrome Extension + static website that turns a private YouTube playli
 - Required Google Cloud service: **YouTube Data API v3**
 - Google Cloud project: `queup-nikolay-20260426`
 - OAuth client id: `340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com`
-- Publishing status: `Testing`
+- Chrome Web Store status: Published
+- Google Auth Platform status: Check Google Cloud Auth Platform; if the OAuth app is still in Testing, add each Google account that should connect YouTube as a test user.
 - Chrome Web Store item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
 - Chrome Web Store uploads cannot include `manifest.key`; the publish workflow strips it from the packaged ZIP.
 - The OAuth client is configured for the Chrome Web Store item ID above, and app ownership is verified in Google Auth Platform.
@@ -57,14 +58,18 @@ The static site is in `site/` with:
 - `site/index.html`
 - `site/privacy.html`
 - `site/styles.css`
-- `site/CNAME` (`queup.io`, kept for future custom-domain deployment)
+- `site/CNAME` (`queup.io`)
 
 GitHub Pages is deployed from `site/` through `.github/workflows/pages.yml`.
-The workflow excludes `site/CNAME` so the project page stays available at:
+The published site is served from the custom domain:
 
-- `https://nikolay.github.io/queup/`
+- `https://queup.io/`
 
-When DNS for `queup.io` is ready, deploy `site/CNAME` with the site artifact or configure the custom domain in GitHub Pages settings.
+The Pages custom domain is configured in GitHub and HTTPS is enforced. Keep `site/CNAME` in the deployed artifact so future site deployments preserve the custom-domain intent.
+
+## Sponsorship
+
+GitHub Sponsors and related funding links are configured in `.github/FUNDING.yml`.
 
 ## Chrome Web Store deployment
 
@@ -129,4 +134,4 @@ Keep the private key somewhere secure outside the repository. If it is lost, Chr
 
 ## Troubleshooting OAuth
 
-QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If buttons do not open a Google prompt, open the QueUp toolbar popup, click **Connect YouTube**, and confirm Chrome is signed into the Google account that owns your YouTube playlists.
+QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If buttons do not open a Google prompt, open the QueUp toolbar popup, click **Connect YouTube**, and confirm Chrome is signed into the Google account that owns your YouTube playlists. The setup page clears QueUp's cached Chrome identity state before asking Chrome for a fresh YouTube token, so retrying Connect should present a new Google consent flow when Chrome requires one.

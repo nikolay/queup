@@ -101,26 +101,13 @@ async function getAuthToken(interactive = false) {
     enableGranularPermissions: true
   };
 
-  return withTimeout(
-    new Promise((resolve, reject) => {
-      chrome.identity.getAuthToken(details, (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError?.message || "No auth token."));
-          return;
-        }
+  const result = await withTimeout(chrome.identity.getAuthToken(details), timeoutMs, timeoutMessage);
+  const token = extractAuthToken(result);
+  if (!token) {
+    throw new Error("Chrome identity did not return an auth token.");
+  }
 
-        const token = extractAuthToken(result);
-        if (!token) {
-          reject(new Error("Chrome identity did not return an auth token."));
-          return;
-        }
-
-        resolve(token);
-      });
-    }),
-    timeoutMs,
-    timeoutMessage
-  );
+  return token;
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -143,9 +130,7 @@ async function fetchWithTimeout(url, options = {}) {
 }
 
 function removeCachedToken(token) {
-  return new Promise((resolve) => {
-    chrome.identity.removeCachedAuthToken({ token }, () => resolve());
-  });
+  return chrome.identity.removeCachedAuthToken({ token }).catch(() => {});
 }
 
 function setBadge(text, color = "#a5183f") {

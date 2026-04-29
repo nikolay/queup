@@ -2,7 +2,7 @@
 
 ## Description
 
-QueUp gives YouTube a lightweight watch queue that lives in your own account. It adds Add to Que and Remove from Que buttons to video pages and recommended videos, then stores your queue in a private YouTube playlist named Que.
+QueUp gives YouTube a lightweight watch queue that lives in your own account. It adds compact + Que and - Que buttons to video pages and recommended videos, then stores your queue in a private YouTube playlist named Que.
 
 Use QueUp when you want to keep watching momentum without opening a dozen tabs or losing recommendations you want to revisit later. The extension also adds a prominent Open Que Playlist button on YouTube, so your saved videos are always one click away.
 
@@ -14,6 +14,6 @@ Privacy is intentionally simple. QueUp uses Google OAuth only to read and update
 
 - Category: Workflow & Planning
 - Language: English (United States)
-- Homepage URL: https://nikolay.github.io/queup/
+- Homepage URL: https://queup.io/
 - Support URL: https://github.com/nikolay/queup/issues
 - Mature content: Off

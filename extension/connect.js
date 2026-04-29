@@ -36,36 +36,36 @@ function tokenFromResult(result, grantedScopes) {
   };
 }
 
-function getAuthTokenInteractive() {
+function withTimeout(promise, timeoutMs, timeoutMessage) {
   return new Promise((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => {
-      reject(new Error("Timed out waiting for Google consent. If no prompt appeared, confirm Chrome is signed into the Google account you use for YouTube."));
-    }, AUTH_TIMEOUT_MS);
-
-    chrome.identity.getAuthToken(
-      {
-        interactive: true,
-        scopes: [YOUTUBE_SCOPE],
-        enableGranularPermissions: true
-      },
-      (result, grantedScopes) => {
-        window.clearTimeout(timeoutId);
-
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message || "Chrome identity failed."));
-          return;
-        }
-
-        const auth = tokenFromResult(result, grantedScopes);
-        if (!auth.token) {
-          reject(new Error("Chrome identity did not return an auth token."));
-          return;
-        }
-
-        resolve(auth);
-      }
-    );
+    const timeoutId = window.setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    Promise.resolve(promise)
+      .then(resolve, reject)
+      .finally(() => window.clearTimeout(timeoutId));
   });
+}
+
+async function resetChromeIdentityCache() {
+  await chrome.identity.clearAllCachedAuthTokens();
+}
+
+async function getAuthTokenInteractive() {
+  const result = await withTimeout(
+    chrome.identity.getAuthToken({
+      interactive: true,
+      scopes: [YOUTUBE_SCOPE],
+      enableGranularPermissions: true
+    }),
+    AUTH_TIMEOUT_MS,
+    "Timed out waiting for Google consent. If no prompt appeared, confirm this Chrome profile is signed into the Google account you use for YouTube."
+  );
+
+  const auth = tokenFromResult(result);
+  if (!auth.token) {
+    throw new Error("Chrome identity did not return an auth token.");
+  }
+
+  return auth;
 }
 
 function sendMessage(message) {
@@ -83,9 +83,11 @@ function sendMessage(message) {
 connectButton.addEventListener("click", async () => {
   setBusy(true);
   setDetails("");
-  setStatus("Opening Google consent prompt...");
+  setStatus("Resetting QueUp's cached Google authorization...");
 
   try {
+    await resetChromeIdentityCache();
+    setStatus("Opening Google consent prompt...");
     const auth = await getAuthTokenInteractive();
     setStatus("Google granted access. Preparing your Que playlist...");
 
@@ -98,7 +100,7 @@ connectButton.addEventListener("click", async () => {
     setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nGranted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
   } catch (error) {
     setStatus(error?.message || "Unable to connect YouTube.", true);
-    setDetails("If Chrome did not show a prompt, open Chrome settings and make sure this Chrome profile is signed into the Google account you use for YouTube, then try again.");
+    setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nExtension ID: ${chrome.runtime.id}\n\nIf Chrome did not show a prompt, open Chrome settings and make sure this Chrome profile is signed into the Google account you use for YouTube, then try again.`);
   } finally {
     setBusy(false);
   }
