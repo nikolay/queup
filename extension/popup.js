@@ -36,6 +36,7 @@ const lastErrorEl = document.getElementById("lastError");
 const connectYoutubeButton = document.getElementById("connectYoutube");
 const openQueueButton = document.getElementById("openQueue");
 const refreshQueueButton = document.getElementById("refreshQueue");
+const manifest = chrome.runtime.getManifest();
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -50,6 +51,12 @@ function setLastError(error) {
 
   const context = error.context ? `${error.context}: ` : "";
   lastErrorEl.textContent = `Last error: ${context}${error.message}`;
+}
+
+function appendVersion() {
+  if (!lastErrorEl.textContent) {
+    lastErrorEl.textContent = `Installed version: ${manifest.version || "unknown"}`;
+  }
 }
 
 function setBusy(isBusy) {
@@ -127,10 +134,12 @@ sendMessage({ type: "GET_QUEUE_INFO" }).then((response) => {
   }
 
   setLastError(response.lastError || null);
+  appendVersion();
 });
 
 sendMessage({ type: "GET_DEBUG_INFO" }).then((response) => {
   if (response?.ok) {
     setLastError(response.lastError || null);
+    appendVersion();
   }
 });

@@ -20,6 +20,7 @@ let memoryState = null;
 
 function defaultState() {
   return {
+    authConnected: false,
     playlistId: null,
     queueMap: {},
     queueFetchedAt: 0,
@@ -42,6 +43,10 @@ async function setState(patch) {
   memoryState = merged;
   await chrome.storage.local.set({ [STATE_KEY]: merged });
   return merged;
+}
+
+function hasCachedAuth(state) {
+  return Boolean(state.authConnected || state.playlistId);
 }
 
 function isLikelyAuthError(error) {
@@ -176,7 +181,10 @@ async function rememberError(context, error) {
 
 async function clearLastError() {
   try {
-    await setState({ lastError: null });
+    await setState({
+      authConnected: true,
+      lastError: null
+    });
     await setBadge("");
   } catch (_error) {
     // Badge/storage cleanup should not block the user's action.
@@ -344,6 +352,10 @@ async function fetchQueueMap(options = {}) {
   const state = await getState();
   const cacheIsFresh = Date.now() - (state.queueFetchedAt || 0) < QUEUE_CACHE_TTL_MS;
 
+  if (!interactive && !hasCachedAuth(state)) {
+    return state.queueMap || {};
+  }
+
   if (!force && cacheIsFresh && state.playlistId) {
     return state.queueMap || {};
   }
@@ -387,6 +399,7 @@ async function fetchQueueMap(options = {}) {
   } while (pageToken);
 
   await setState({
+    authConnected: true,
     playlistId,
     queueMap,
     queueFetchedAt: Date.now()
@@ -569,6 +582,7 @@ async function authenticate(options = {}) {
   });
 
   return {
+    version: chrome.runtime.getManifest().version,
     playlistId,
     queueSize: Object.keys(queueMap).length,
     url: queueUrl(playlistId)
@@ -657,7 +671,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         ok: true,
         lastError: state.lastError || null,
         playlistId: state.playlistId || null,
-        queueSize: Object.keys(state.queueMap || {}).length
+        queueSize: Object.keys(state.queueMap || {}).length,
+        version: chrome.runtime.getManifest().version
       });
       return;
     }

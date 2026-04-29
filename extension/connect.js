@@ -5,6 +5,7 @@ const connectButton = document.getElementById("connectButton");
 const openYouTubeButton = document.getElementById("openYouTubeButton");
 const statusEl = document.getElementById("status");
 const detailsEl = document.getElementById("details");
+const manifest = chrome.runtime.getManifest();
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -18,6 +19,11 @@ function setDetails(value) {
 function setBusy(isBusy) {
   connectButton.disabled = isBusy;
   openYouTubeButton.disabled = isBusy;
+}
+
+function showVersion() {
+  const version = manifest.version || "unknown";
+  setDetails(`Installed QueUp version: ${version}`);
 }
 
 function tokenFromResult(result, grantedScopes) {
@@ -89,7 +95,7 @@ connectButton.addEventListener("click", async () => {
     }
 
     setStatus("Connected. Your private Que playlist is ready.");
-    setDetails(`Granted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
+    setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nGranted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
   } catch (error) {
     setStatus(error?.message || "Unable to connect YouTube.", true);
     setDetails("If Chrome did not show a prompt, open Chrome settings and make sure this Chrome profile is signed into the Google account you use for YouTube, then try again.");
@@ -101,3 +107,5 @@ connectButton.addEventListener("click", async () => {
 openYouTubeButton.addEventListener("click", () => {
   chrome.tabs.create({ url: "https://www.youtube.com/" });
 });
+
+showVersion();
