@@ -556,14 +556,15 @@ async function openQueuePlaylist() {
   return { playlistId, url };
 }
 
-async function authenticate() {
+async function authenticate(options = {}) {
+  const { interactive = true } = options;
   const playlistId = await ensureQueuePlaylist({
-    interactive: true,
+    interactive,
     forceRefresh: true,
     createIfMissing: true
   });
   const queueMap = await fetchQueueMap({
-    interactive: true,
+    interactive,
     force: true
   });
 
@@ -630,7 +631,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (type === "AUTHENTICATE") {
-      const result = await authenticate();
+      const result = await authenticate({
+        interactive: message.interactive !== false
+      });
       await clearLastError();
       sendResponse({ ok: true, ...result });
       return;

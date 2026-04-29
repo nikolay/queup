@@ -5,13 +5,13 @@
   const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
   const MESSAGE_TIMEOUT_MS = 75 * 1000;
   const TEXT = {
-    add: "Add to Que",
-    remove: "Remove from Que",
+    add: "+ Que",
+    remove: "- Que",
     updating: "Updating...",
-    signingIn: "Signing in...",
+    signingIn: "Connecting...",
     openQueue: "Open Que Playlist",
     signInOpenQueue: "Sign in to open Que",
-    signInRequired: "Open QueUp to sign in",
+    signInRequired: "Open QueUp to connect",
     timedOut: "QueUp timed out",
     failed: "QueUp error"
   };
@@ -120,6 +120,8 @@
     }
 
     button.classList.toggle("queup-button--in-queue", inQueue);
+    button.title = inQueue ? "Remove from Que" : "Add to Que";
+    button.setAttribute("aria-label", inQueue ? "Remove from Que" : "Add to Que");
     button.disabled = loading;
   }
 
@@ -227,7 +229,7 @@
     const response = await sendMessage({
       type: inQueue ? "REMOVE_VIDEO" : "ADD_VIDEO",
       videoId,
-      interactive: true
+      interactive: false
     });
 
     setLoading(videoId, false);

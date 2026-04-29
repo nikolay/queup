@@ -58,6 +58,11 @@ function setBusy(isBusy) {
   refreshQueueButton.disabled = isBusy;
 }
 
+function openConnectPage() {
+  const url = chrome.runtime.getURL("connect.html");
+  chrome.tabs.create({ url });
+}
+
 function errorMessage(response, fallback) {
   if (response?.userMessage) {
     return response.userMessage;
@@ -66,23 +71,9 @@ function errorMessage(response, fallback) {
 }
 
 connectYoutubeButton.addEventListener("click", async () => {
-  setStatus("Connecting to Google... Chrome should open a Google consent prompt.");
   setLastError(null);
-  setBusy(true);
-  const response = await sendMessage({ type: "AUTHENTICATE" });
-  setBusy(false);
-
-  if (!response?.ok) {
-    setStatus(errorMessage(response, "Unable to connect YouTube."), true);
-    setLastError({
-      context: response?.context || "AUTHENTICATE",
-      message: response?.error || "Unable to connect YouTube."
-    });
-    return;
-  }
-
-  setLastError(null);
-  setStatus("Connected. Your private Que playlist is ready.");
+  setStatus("Opening the persistent YouTube connection page...");
+  openConnectPage();
 });
 
 openQueueButton.addEventListener("click", async () => {
