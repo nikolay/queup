@@ -9,7 +9,7 @@
     remove: "- Que",
     updating: "Updating...",
     signingIn: "Connecting...",
-    openQueue: "Open Que Playlist",
+    openQueue: "Open Que",
     signInOpenQueue: "Sign in to open Que",
     signInRequired: "Open QueUp to connect",
     timedOut: "QueUp timed out",
@@ -322,7 +322,7 @@
       button.disabled = false;
       if (!response?.ok) {
         button.textContent = response?.requiresAuth ? TEXT.signInOpenQueue : TEXT.failed;
-        button.title = response?.userMessage || response?.error || "Unable to open Que playlist.";
+        button.title = response?.userMessage || response?.error || "Unable to open Que.";
         showToast(button.title, true);
         window.setTimeout(() => {
           button.textContent = TEXT.openQueue;

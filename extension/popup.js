@@ -1,5 +1,17 @@
 const MESSAGE_TIMEOUT_MS = 75 * 1000;
 
+const statusEl = document.getElementById("status");
+const lastErrorEl = document.getElementById("lastError");
+const connectionEl = document.getElementById("connection");
+const connectYoutubeButton = document.getElementById("connectYoutube");
+const disconnectYoutubeButton = document.getElementById("disconnectYoutube");
+const openQueueButton = document.getElementById("openQueue");
+const refreshQueueButton = document.getElementById("refreshQueue");
+const manifest = chrome.runtime.getManifest();
+
+let isBusy = false;
+let isConnected = false;
+
 async function sendMessage(message) {
   return new Promise((resolve) => {
     let settled = false;
@@ -8,7 +20,7 @@ async function sendMessage(message) {
       resolve({
         ok: false,
         timedOut: true,
-        error: "QueUp timed out waiting for Chrome. Make sure Chrome is signed into the Google account you use for YouTube, then try again."
+        error: "QueUp timed out waiting for Chrome. Open Connect YouTube, finish Google sign-in, then try again."
       });
     }, MESSAGE_TIMEOUT_MS);
 
@@ -31,38 +43,48 @@ async function sendMessage(message) {
   });
 }
 
-const statusEl = document.getElementById("status");
-const lastErrorEl = document.getElementById("lastError");
-const connectYoutubeButton = document.getElementById("connectYoutube");
-const openQueueButton = document.getElementById("openQueue");
-const refreshQueueButton = document.getElementById("refreshQueue");
-const manifest = chrome.runtime.getManifest();
-
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? "#a5183f" : "#3a4d47";
 }
 
-function setLastError(error) {
-  if (!error) {
-    lastErrorEl.textContent = "";
-    return;
+function setLastError(error, version = manifest.version) {
+  const lines = [`Installed version: ${version || "unknown"}`];
+
+  if (error) {
+    const context = error.context ? `${error.context}: ` : "";
+    lines.unshift(`Last error: ${context}${error.message}`);
   }
 
-  const context = error.context ? `${error.context}: ` : "";
-  lastErrorEl.textContent = `Last error: ${context}${error.message}`;
+  lastErrorEl.textContent = lines.join("\n");
 }
 
-function appendVersion() {
-  if (!lastErrorEl.textContent) {
-    lastErrorEl.textContent = `Installed version: ${manifest.version || "unknown"}`;
-  }
-}
-
-function setBusy(isBusy) {
+function setBusy(nextBusy) {
+  isBusy = nextBusy;
   connectYoutubeButton.disabled = isBusy;
-  openQueueButton.disabled = isBusy;
-  refreshQueueButton.disabled = isBusy;
+  disconnectYoutubeButton.disabled = isBusy;
+  openQueueButton.disabled = isBusy || !isConnected;
+  refreshQueueButton.disabled = isBusy || !isConnected;
+}
+
+function accountLabel(account) {
+  if (account?.title) {
+    return `Connected to ${account.title}`;
+  }
+  return "Connected to YouTube";
+}
+
+function renderConnection(info = {}, options = {}) {
+  isConnected = Boolean(info.connected);
+  connectionEl.textContent = isConnected ? accountLabel(info.account) : "YouTube is not connected.";
+  connectionEl.classList.toggle("connection--connected", isConnected);
+
+  connectYoutubeButton.hidden = isConnected;
+  disconnectYoutubeButton.hidden = !isConnected;
+  setBusy(isBusy);
+  if (options.updateDetail !== false) {
+    setLastError(info.lastError || null, info.version || manifest.version);
+  }
 }
 
 function openConnectPage() {
@@ -77,69 +99,111 @@ function errorMessage(response, fallback) {
   return response?.error || fallback;
 }
 
-connectYoutubeButton.addEventListener("click", async () => {
+async function loadConnectionInfo(options = {}) {
+  const updateStatus = options.updateStatus !== false;
+  const updateDetail = options.updateDetail !== false;
+  const response = await sendMessage({ type: "GET_CONNECTION_INFO" });
+  if (!response?.ok) {
+    renderConnection({ connected: false, version: manifest.version }, { updateDetail });
+    if (updateStatus) {
+      setStatus("Connect YouTube to initialize QueUp.");
+    }
+    if (updateDetail) {
+      setLastError({
+        context: response?.context || "GET_CONNECTION_INFO",
+        message: response?.error || "Unable to read connection state."
+      });
+    }
+    return;
+  }
+
+  renderConnection(response, { updateDetail });
+  if (!updateStatus) {
+    return;
+  }
+
+  if (response.connected) {
+    setStatus(response.playlistId ? "Que is ready." : "Que will be created on first add.");
+  } else {
+    setStatus("Connect YouTube to initialize QueUp.");
+  }
+}
+
+connectYoutubeButton.addEventListener("click", () => {
   setLastError(null);
-  setStatus("Opening the persistent YouTube connection page...");
+  setStatus("Opening YouTube connection page...");
   openConnectPage();
 });
 
+disconnectYoutubeButton.addEventListener("click", async () => {
+  setStatus("Disconnecting YouTube...");
+  setBusy(true);
+  const response = await sendMessage({ type: "DISCONNECT" });
+  setBusy(false);
+
+  if (!response?.ok) {
+    setStatus(errorMessage(response, "Unable to disconnect YouTube."), true);
+    setLastError({
+      context: response?.context || "DISCONNECT",
+      message: response?.error || "Unable to disconnect YouTube."
+    });
+    return;
+  }
+
+  renderConnection(response);
+  setStatus("YouTube disconnected.");
+});
+
 openQueueButton.addEventListener("click", async () => {
+  if (!isConnected) {
+    setStatus("Connect YouTube before opening Que.", true);
+    return;
+  }
+
   setStatus("Opening Que...");
   setBusy(true);
   const response = await sendMessage({ type: "OPEN_QUEUE" });
   setBusy(false);
 
   if (!response?.ok) {
-    setStatus(errorMessage(response, "Unable to open playlist."), true);
+    setStatus(errorMessage(response, "Unable to open Que."), true);
     setLastError({
       context: response?.context || "OPEN_QUEUE",
-      message: response?.error || "Unable to open playlist."
+      message: response?.error || "Unable to open Que."
     });
+    await loadConnectionInfo({ updateStatus: false, updateDetail: false });
     return;
   }
 
   setLastError(null);
-  setStatus("Que playlist opened.");
+  setStatus("Que opened.");
+  await loadConnectionInfo();
 });
 
 refreshQueueButton.addEventListener("click", async () => {
-  setStatus("Refreshing queue cache...");
+  if (!isConnected) {
+    setStatus("Connect YouTube before refreshing Que.", true);
+    return;
+  }
+
+  setStatus("Refreshing Que...");
   setBusy(true);
-  const response = await sendMessage({ type: "REFRESH_QUEUE", interactive: true });
+  const response = await sendMessage({ type: "REFRESH_QUEUE", interactive: false });
   setBusy(false);
 
   if (!response?.ok) {
-    setStatus(errorMessage(response, "Unable to refresh queue."), true);
+    setStatus(errorMessage(response, "Unable to refresh Que."), true);
     setLastError({
       context: response?.context || "REFRESH_QUEUE",
-      message: response?.error || "Unable to refresh queue."
+      message: response?.error || "Unable to refresh Que."
     });
+    await loadConnectionInfo({ updateStatus: false, updateDetail: false });
     return;
   }
 
   setLastError(null);
-  setStatus("Queue cache refreshed.");
+  setStatus("Que refreshed.");
+  await loadConnectionInfo();
 });
 
-sendMessage({ type: "GET_QUEUE_INFO" }).then((response) => {
-  if (!response?.ok) {
-    setStatus("Connect YouTube to initialize QueUp.");
-    return;
-  }
-
-  if (response.playlistId) {
-    setStatus("Que playlist is ready.");
-  } else {
-    setStatus("Que playlist will be created on first Add to Que.");
-  }
-
-  setLastError(response.lastError || null);
-  appendVersion();
-});
-
-sendMessage({ type: "GET_DEBUG_INFO" }).then((response) => {
-  if (response?.ok) {
-    setLastError(response.lastError || null);
-    appendVersion();
-  }
-});
+loadConnectionInfo();

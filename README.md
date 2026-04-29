@@ -13,7 +13,7 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
   - the current watch page video
   - recommended and feed video cards
 - Uses a private YouTube playlist named **Que** as storage.
-- Adds a prominent **Open Que Playlist** button on YouTube pages.
+- Adds a prominent **Open Que** button on YouTube pages.
 - Removes a queued video after it is watched (on `ended` and near-end fallback).
 
 ## Local setup

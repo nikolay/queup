@@ -10,8 +10,8 @@
   max-width: max-content !important;
   min-width: 0 !important;
   width: auto !important;
-  background: var(--yt-spec-badge-chip-background, #272727);
-  color: var(--yt-spec-text-primary, #f1f1f1);
+  background: var(--yt-spec-button-chip-background-hover, var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.05)));
+  color: var(--yt-spec-text-primary, #0f0f0f);
   cursor: pointer;
   font-family: Roboto, Arial, sans-serif;
   font-size: 14px;
@@ -26,6 +26,17 @@
 }
 
 .queup-button:hover {
+  background: var(--yt-spec-mono-tonal-hover, rgba(0, 0, 0, 0.1));
+}
+
+html[dark] .queup-button,
+html[system-icons][dark] .queup-button {
+  background: var(--yt-spec-badge-chip-background, #272727);
+  color: var(--yt-spec-text-primary, #f1f1f1);
+}
+
+html[dark] .queup-button:hover,
+html[system-icons][dark] .queup-button:hover {
   background: var(--yt-spec-mono-tonal-hover, rgba(255, 255, 255, 0.18));
 }
 

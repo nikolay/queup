@@ -10,9 +10,11 @@
     <main class="popup">
       <h1>QueUp</h1>
       <p class="subhead">Queue YouTube videos in your private <strong>Que</strong> playlist.</p>
+      <p id="connection" class="connection" aria-live="polite">Checking YouTube connection...</p>
       <button id="connectYoutube">Connect YouTube</button>
-      <button id="openQueue" class="secondary">Open Que Playlist</button>
-      <button id="refreshQueue" class="secondary">Refresh Queue Cache</button>
+      <button id="disconnectYoutube" class="secondary" hidden>Disconnect</button>
+      <button id="openQueue" class="secondary">Open Que</button>
+      <button id="refreshQueue" class="secondary">Refresh Que Cache</button>
       <p id="status" aria-live="polite"></p>
       <p id="lastError" class="detail" aria-live="polite"></p>
     </main>

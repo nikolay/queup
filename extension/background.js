@@ -23,6 +23,9 @@ let memorySessionAuth = null;
 function defaultState() {
   return {
     authConnected: false,
+    authMode: null,
+    authSource: null,
+    account: null,
     playlistId: null,
     queueMap: {},
     queueFetchedAt: 0,
@@ -49,6 +52,18 @@ async function setState(patch) {
 
 function hasCachedAuth(state) {
   return Boolean(state.authConnected || state.playlistId);
+}
+
+function isConnectedState(state, sessionAuthActive) {
+  if (!state.authConnected) {
+    return false;
+  }
+
+  if (state.authMode === "chromeIdentity") {
+    return true;
+  }
+
+  return Boolean(sessionAuthActive);
 }
 
 function isLikelyAuthError(error) {
@@ -201,6 +216,24 @@ function removeCachedToken(token) {
   return chrome.identity.removeCachedAuthToken({ token }).catch(() => {});
 }
 
+async function clearChromeIdentityTokens() {
+  try {
+    if (chrome.identity.clearAllCachedAuthTokens) {
+      await chrome.identity.clearAllCachedAuthTokens();
+      return;
+    }
+  } catch (_error) {
+    // Fall back to removing the current token when the broader API is unavailable.
+  }
+
+  try {
+    const token = await getAuthToken(false);
+    await removeCachedToken(token);
+  } catch (_error) {
+    // A disconnect action should succeed even if Chrome has no cached token.
+  }
+}
+
 function setBadge(text, color = "#a5183f") {
   if (!chrome.action) {
     return Promise.resolve();
@@ -302,6 +335,32 @@ async function youtubeRequest(endpoint, options = {}) {
   }
 
   return response.json();
+}
+
+function accountFromChannel(channel) {
+  if (!channel) {
+    return null;
+  }
+
+  const thumbnails = channel?.snippet?.thumbnails || {};
+  return {
+    channelId: channel.id || null,
+    title: channel?.snippet?.title || "YouTube",
+    thumbnailUrl: thumbnails.default?.url || thumbnails.medium?.url || thumbnails.high?.url || null,
+    fetchedAt: new Date().toISOString()
+  };
+}
+
+async function fetchConnectedAccount(interactive = false) {
+  const result = await youtubeRequest("/channels?part=snippet&mine=true", {
+    interactive
+  });
+  const account = accountFromChannel(result?.items?.[0]);
+  await setState({
+    authConnected: true,
+    account
+  });
+  return account;
 }
 
 function queueUrl(playlistId) {
@@ -723,13 +782,52 @@ async function authenticate(options = {}) {
     force: true,
     createIfMissing: true
   });
+  const account = await fetchConnectedAccount(interactive).catch(() => null);
 
   return {
     version: chrome.runtime.getManifest().version,
+    account,
     playlistId,
     queueSize: Object.keys(queueMap).length,
     url: queueUrl(playlistId)
   };
+}
+
+async function getConnectionInfo() {
+  const state = await getState();
+  const sessionAuthActive = Boolean(await getUsableSessionToken());
+  const connected = isConnectedState(state, sessionAuthActive);
+  let account = state.account || null;
+
+  if (connected && !account && sessionAuthActive) {
+    account = await fetchConnectedAccount(false).catch(() => null);
+  }
+
+  const currentState = await getState();
+  const playlistId = currentState.playlistId || null;
+
+  return {
+    ok: true,
+    account,
+    authMode: currentState.authMode || null,
+    authSource: currentState.authSource || null,
+    connected,
+    lastError: currentState.lastError || null,
+    playlistId,
+    queueSize: Object.keys(currentState.queueMap || {}).length,
+    sessionAuthActive,
+    url: playlistId ? queueUrl(playlistId) : null,
+    version: chrome.runtime.getManifest().version
+  };
+}
+
+async function disconnectYoutube() {
+  await clearSessionAuth();
+  await clearChromeIdentityTokens();
+  memoryState = defaultState();
+  await chrome.storage.local.set({ [STATE_KEY]: memoryState });
+  await setBadge("");
+  return getConnectionInfo();
 }
 
 function asResponseError(error, context = "") {
@@ -741,7 +839,7 @@ function asResponseError(error, context = "") {
     error: message,
     requiresAuth,
     userMessage: requiresAuth
-      ? `Connect YouTube failed: ${message}. Make sure Chrome is signed into the Google account you use for YouTube, then try Connect YouTube again.`
+      ? `Connect YouTube to continue: ${message}. Click Connect YouTube, finish Google sign-in, then try again.`
       : message
   };
 }
@@ -791,6 +889,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.accessToken) {
         await setSessionAuth(message.accessToken, message.expiresInSeconds);
       }
+      await setState({
+        authMode: message.authSource === "Chrome profile" ? "chromeIdentity" : "session",
+        authSource: message.authSource || null
+      });
       const result = await authenticate({
         interactive: message.interactive !== false
       });
@@ -800,25 +902,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (type === "GET_QUEUE_INFO") {
-      const state = await getState();
-      const playlistId = state.playlistId || null;
-      sendResponse({
-        ok: true,
-        playlistId,
-        url: playlistId ? queueUrl(playlistId) : null,
-        lastError: state.lastError || null
-      });
+      sendResponse(await getConnectionInfo());
+      return;
+    }
+
+    if (type === "GET_CONNECTION_INFO") {
+      sendResponse(await getConnectionInfo());
+      return;
+    }
+
+    if (type === "DISCONNECT") {
+      sendResponse(await disconnectYoutube());
       return;
     }
 
     if (type === "GET_DEBUG_INFO") {
       const state = await getState();
+      const sessionAuthActive = Boolean(await getUsableSessionToken());
       sendResponse({
         ok: true,
         lastError: state.lastError || null,
+        account: state.account || null,
+        authMode: state.authMode || null,
+        connected: isConnectedState(state, sessionAuthActive),
         playlistId: state.playlistId || null,
         queueSize: Object.keys(state.queueMap || {}).length,
-        sessionAuthActive: Boolean(await getUsableSessionToken()),
+        sessionAuthActive,
         version: chrome.runtime.getManifest().version
       });
       return;
@@ -829,10 +938,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         interactive: message.interactive === true,
         force: true
       });
+      const account = await fetchConnectedAccount(message.interactive === true).catch(async (error) => {
+        if (isLikelyAuthError(error)) {
+          throw error;
+        }
+        return (await getState()).account || null;
+      });
       const state = await getState();
       await clearLastError();
       sendResponse({
         ok: true,
+        account,
         playlistId: state.playlistId || null
       });
       return;

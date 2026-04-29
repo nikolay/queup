@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QueUp",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp98xU/5v87clsO/NCPbPxa2kVLQZVY/UwS5b4URXbywua2z7flRmUrvBo6TUSKprixyYex/a0H3e1kWPIDFtk5VthzVLlXj1vd/nb8THXtRFq5sU1PRV7eyPcQOOfOTtA301u530UkRrvfsacqKWc6q+DcTgY8GWRUNXFTvknZlcEmNO1QMiiaXaYffk1INaaj5XOSzKadRly6jnuBOa9bMb4Ma+glHhXhbW7GXAXEr0vKWeWskj90+7a/AfKKN0tSI5IAINzvHxc8ieTD6IU3NrdxaU3vEmyCz8wy8jH/UM5Op9FWixZggONZStMIpBWEGhNHA/blPD45zwIDAQAB",
   "description": "A YouTube watch queue powered by a private playlist named Que.",
   "homepage_url": "https://queup.io",
