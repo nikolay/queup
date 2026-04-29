@@ -8,6 +8,13 @@ const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
 const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
 const API_REQUEST_TIMEOUT_MS = 25 * 1000;
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const INTERACTIVE_MESSAGE_TYPES = new Set([
+  "ADD_VIDEO",
+  "AUTHENTICATE",
+  "OPEN_QUEUE",
+  "REFRESH_QUEUE",
+  "REMOVE_VIDEO"
+]);
 
 let memoryState = null;
 
@@ -15,7 +22,8 @@ function defaultState() {
   return {
     playlistId: null,
     queueMap: {},
-    queueFetchedAt: 0
+    queueFetchedAt: 0,
+    lastError: null
   };
 }
 
@@ -88,27 +96,20 @@ async function getAuthToken(interactive = false) {
     enableGranularPermissions: true
   };
 
-  try {
-    const maybePromise = chrome.identity.getAuthToken(details);
-    if (maybePromise && typeof maybePromise.then === "function") {
-      const result = await withTimeout(maybePromise, timeoutMs, timeoutMessage);
-      const token = extractAuthToken(result);
-      if (!token) {
-        throw new Error("No auth token.");
-      }
-      return token;
-    }
-  } catch (error) {
-    throw new Error(error?.message || "Unable to get Google auth token.");
-  }
-
   return withTimeout(
     new Promise((resolve, reject) => {
-      chrome.identity.getAuthToken(details, (token) => {
-        if (chrome.runtime.lastError || !token) {
+      chrome.identity.getAuthToken(details, (result) => {
+        if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError?.message || "No auth token."));
           return;
         }
+
+        const token = extractAuthToken(result);
+        if (!token) {
+          reject(new Error("Chrome identity did not return an auth token."));
+          return;
+        }
+
         resolve(token);
       });
     }),
@@ -140,6 +141,56 @@ function removeCachedToken(token) {
   return new Promise((resolve) => {
     chrome.identity.removeCachedAuthToken({ token }, () => resolve());
   });
+}
+
+function setBadge(text, color = "#a5183f") {
+  if (!chrome.action) {
+    return Promise.resolve();
+  }
+
+  return Promise.all([
+    chrome.action.setBadgeText({ text }),
+    chrome.action.setBadgeBackgroundColor({ color })
+  ]).catch(() => {});
+}
+
+function errorPayload(error, context = "") {
+  const message = String(error?.message || "Unknown error.");
+  return {
+    at: new Date().toISOString(),
+    context,
+    message,
+    requiresAuth: isLikelyAuthError(error),
+    status: error?.status || null
+  };
+}
+
+async function rememberError(context, error) {
+  try {
+    await setState({ lastError: errorPayload(error, context) });
+    await setBadge("!");
+  } catch (_error) {
+    // Avoid masking the original failure while reporting it to the UI.
+  }
+}
+
+async function clearLastError() {
+  try {
+    await setState({ lastError: null });
+    await setBadge("");
+  } catch (_error) {
+    // Badge/storage cleanup should not block the user's action.
+  }
+}
+
+function shouldTrackError(type, message) {
+  if (!INTERACTIVE_MESSAGE_TYPES.has(type)) {
+    return false;
+  }
+  if ((type === "ADD_VIDEO" || type === "REMOVE_VIDEO" || type === "REFRESH_QUEUE") && message?.interactive === false) {
+    return false;
+  }
+  return true;
 }
 
 async function youtubeRequest(endpoint, options = {}) {
@@ -523,15 +574,16 @@ async function authenticate() {
   };
 }
 
-function asResponseError(error) {
+function asResponseError(error, context = "") {
   const message = String(error?.message || "Unknown error.");
   const requiresAuth = isLikelyAuthError(error);
   return {
     ok: false,
+    context,
     error: message,
     requiresAuth,
     userMessage: requiresAuth
-      ? "Connect YouTube from the QueUp toolbar popup. If no Google prompt opens, sign into Chrome with the Google account you use for YouTube first."
+      ? `Connect YouTube failed: ${message}. Make sure Chrome is signed into the Google account you use for YouTube, then try Connect YouTube again.`
       : message
   };
 }
@@ -554,6 +606,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const result = await addVideoToQueue(message.videoId, {
         interactive: message.interactive !== false
       });
+      await clearLastError();
       sendResponse({ ok: true, ...result });
       return;
     }
@@ -562,31 +615,46 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const result = await removeVideoFromQueue(message.videoId, {
         interactive: message.interactive !== false
       });
+      if (message.interactive !== false) {
+        await clearLastError();
+      }
       sendResponse({ ok: true, ...result });
       return;
     }
 
     if (type === "OPEN_QUEUE") {
       const result = await openQueuePlaylist();
+      await clearLastError();
       sendResponse({ ok: true, ...result });
       return;
     }
 
     if (type === "AUTHENTICATE") {
       const result = await authenticate();
+      await clearLastError();
       sendResponse({ ok: true, ...result });
       return;
     }
 
     if (type === "GET_QUEUE_INFO") {
-      const playlistId = await ensureQueuePlaylist({
-        interactive: false,
-        createIfMissing: false
-      });
+      const state = await getState();
+      const playlistId = state.playlistId || null;
       sendResponse({
         ok: true,
         playlistId,
-        url: playlistId ? queueUrl(playlistId) : null
+        url: playlistId ? queueUrl(playlistId) : null,
+        lastError: state.lastError || null
+      });
+      return;
+    }
+
+    if (type === "GET_DEBUG_INFO") {
+      const state = await getState();
+      sendResponse({
+        ok: true,
+        lastError: state.lastError || null,
+        playlistId: state.playlistId || null,
+        queueSize: Object.keys(state.queueMap || {}).length
       });
       return;
     }
@@ -597,6 +665,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         force: true
       });
       const state = await getState();
+      await clearLastError();
       sendResponse({
         ok: true,
         playlistId: state.playlistId || null
@@ -607,7 +676,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ ok: false, error: "Unsupported message type." });
   })().catch((error) => {
     console.error("[QueUp] Background error", error);
-    sendResponse(asResponseError(error));
+    (async () => {
+      if (shouldTrackError(message?.type, message)) {
+        await rememberError(message?.type || "UNKNOWN", error);
+      }
+      sendResponse(asResponseError(error, message?.type || ""));
+    })();
   });
 
   return true;

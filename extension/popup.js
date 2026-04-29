@@ -32,6 +32,7 @@ async function sendMessage(message) {
 }
 
 const statusEl = document.getElementById("status");
+const lastErrorEl = document.getElementById("lastError");
 const connectYoutubeButton = document.getElementById("connectYoutube");
 const openQueueButton = document.getElementById("openQueue");
 const refreshQueueButton = document.getElementById("refreshQueue");
@@ -39,6 +40,16 @@ const refreshQueueButton = document.getElementById("refreshQueue");
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.style.color = isError ? "#a5183f" : "#3a4d47";
+}
+
+function setLastError(error) {
+  if (!error) {
+    lastErrorEl.textContent = "";
+    return;
+  }
+
+  const context = error.context ? `${error.context}: ` : "";
+  lastErrorEl.textContent = `Last error: ${context}${error.message}`;
 }
 
 function setBusy(isBusy) {
@@ -55,16 +66,22 @@ function errorMessage(response, fallback) {
 }
 
 connectYoutubeButton.addEventListener("click", async () => {
-  setStatus("Connecting to Google...");
+  setStatus("Connecting to Google... Chrome should open a Google consent prompt.");
+  setLastError(null);
   setBusy(true);
   const response = await sendMessage({ type: "AUTHENTICATE" });
   setBusy(false);
 
   if (!response?.ok) {
     setStatus(errorMessage(response, "Unable to connect YouTube."), true);
+    setLastError({
+      context: response?.context || "AUTHENTICATE",
+      message: response?.error || "Unable to connect YouTube."
+    });
     return;
   }
 
+  setLastError(null);
   setStatus("Connected. Your private Que playlist is ready.");
 });
 
@@ -76,9 +93,14 @@ openQueueButton.addEventListener("click", async () => {
 
   if (!response?.ok) {
     setStatus(errorMessage(response, "Unable to open playlist."), true);
+    setLastError({
+      context: response?.context || "OPEN_QUEUE",
+      message: response?.error || "Unable to open playlist."
+    });
     return;
   }
 
+  setLastError(null);
   setStatus("Que playlist opened.");
 });
 
@@ -90,9 +112,14 @@ refreshQueueButton.addEventListener("click", async () => {
 
   if (!response?.ok) {
     setStatus(errorMessage(response, "Unable to refresh queue."), true);
+    setLastError({
+      context: response?.context || "REFRESH_QUEUE",
+      message: response?.error || "Unable to refresh queue."
+    });
     return;
   }
 
+  setLastError(null);
   setStatus("Queue cache refreshed.");
 });
 
@@ -106,5 +133,13 @@ sendMessage({ type: "GET_QUEUE_INFO" }).then((response) => {
     setStatus("Que playlist is ready.");
   } else {
     setStatus("Que playlist will be created on first Add to Que.");
+  }
+
+  setLastError(response.lastError || null);
+});
+
+sendMessage({ type: "GET_DEBUG_INFO" }).then((response) => {
+  if (response?.ok) {
+    setLastError(response.lastError || null);
   }
 });

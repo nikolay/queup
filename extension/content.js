@@ -27,6 +27,7 @@
   let boundVideoId = null;
   let endedListener = null;
   let progressListener = null;
+  let toastTimer = null;
 
   function isValidVideoId(videoId) {
     return VIDEO_ID_PATTERN.test(String(videoId || ""));
@@ -152,11 +153,33 @@
     if (title) {
       button.title = title;
       console.warn("[QueUp]", title);
+      showToast(title, true);
     }
     window.setTimeout(() => {
       button.title = "";
       renderButton(button);
     }, duration);
+  }
+
+  function showToast(message, isError = false) {
+    let toast = document.getElementById("queup-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "queup-toast";
+      toast.className = "queup-toast";
+      document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.classList.toggle("queup-toast--error", isError);
+    toast.classList.add("queup-toast--visible");
+
+    if (toastTimer) {
+      window.clearTimeout(toastTimer);
+    }
+    toastTimer = window.setTimeout(() => {
+      toast.classList.remove("queup-toast--visible");
+    }, 6500);
   }
 
   function buttonMessageForError(response) {
@@ -298,6 +321,7 @@
       if (!response?.ok) {
         button.textContent = response?.requiresAuth ? TEXT.signInOpenQueue : TEXT.failed;
         button.title = response?.userMessage || response?.error || "Unable to open Que playlist.";
+        showToast(button.title, true);
         window.setTimeout(() => {
           button.textContent = TEXT.openQueue;
           button.title = "";
@@ -310,10 +334,13 @@
 
   function ensureWatchPageButton() {
     const currentVideoId = currentVideoIdFromPage();
+    let wrapper = document.getElementById("queup-watch-button-wrap");
     let button = document.getElementById("queup-watch-button");
 
     if (!currentVideoId) {
-      if (button) {
+      if (wrapper) {
+        wrapper.remove();
+      } else if (button) {
         button.remove();
       }
       return;
@@ -328,10 +355,23 @@
       return;
     }
 
+    if (!wrapper) {
+      wrapper = document.createElement("span");
+      wrapper.id = "queup-watch-button-wrap";
+      wrapper.className = "queup-watch-button-wrap";
+    }
+
     if (!button) {
       button = buildQueueButton("queup-watch-button");
       button.id = "queup-watch-button";
-      host.prepend(button);
+    }
+
+    if (!wrapper.contains(button)) {
+      wrapper.appendChild(button);
+    }
+
+    if (wrapper.parentElement !== host) {
+      host.appendChild(wrapper);
     }
 
     bindButton(button, currentVideoId);
