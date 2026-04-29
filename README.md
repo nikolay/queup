@@ -43,6 +43,8 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
 - Required Google Cloud service: **YouTube Data API v3**
 - Google Cloud project: `queup-nikolay-20260426`
 - OAuth client id: `340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com`
+- Fallback web OAuth client id: `340590105282-nncmov0f44k63mef91v0b0eu8kdfeq6s.apps.googleusercontent.com`
+- Fallback web OAuth redirect URI: `https://fldmblmmafcjlpgnoppjdpkfkkeejnkk.chromiumapp.org/oauth2`
 - Chrome Web Store status: Published
 - Google Auth Platform status: Check Google Cloud Auth Platform; if the OAuth app is still in Testing, add each Google account that should connect YouTube as a test user.
 - Chrome Web Store item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`

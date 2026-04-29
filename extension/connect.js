@@ -1,4 +1,5 @@
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
+const WEB_AUTH_CLIENT_ID = "340590105282-nncmov0f44k63mef91v0b0eu8kdfeq6s.apps.googleusercontent.com";
 const CHROME_IDENTITY_TIMEOUT_MS = 20 * 1000;
 const WEB_AUTH_TIMEOUT_MS = 120 * 1000;
 
@@ -113,13 +114,9 @@ function parseOAuthRedirect(responseUrl) {
 
 async function getWebAuthFlowToken() {
   const redirectUri = chrome.identity.getRedirectURL("oauth2");
-  const clientId = manifest.oauth2?.client_id;
-  if (!clientId) {
-    throw new Error("QueUp is missing its Google OAuth client id.");
-  }
 
   const params = new URLSearchParams({
-    client_id: clientId,
+    client_id: WEB_AUTH_CLIENT_ID,
     include_granted_scopes: "true",
     prompt: "consent select_account",
     redirect_uri: redirectUri,
