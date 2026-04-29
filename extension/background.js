@@ -308,6 +308,23 @@ function queueUrl(playlistId) {
   return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
 }
 
+function isMissingPlaylistError(error) {
+  const message = String(error?.message || "");
+  return error?.status === 404 && (
+    message.includes("playlistId") ||
+    /playlist.*cannot be found/i.test(message) ||
+    /playlist.*not found/i.test(message)
+  );
+}
+
+async function clearQueuePlaylistCache() {
+  await setState({
+    playlistId: null,
+    queueMap: {},
+    queueFetchedAt: 0
+  });
+}
+
 async function listMyPlaylists(interactive = false) {
   const playlists = [];
   let pageToken = "";
@@ -371,10 +388,15 @@ async function ensureQueuePlaylist(options = {}) {
 
   if (!queuePlaylist) {
     if (!createIfMissing) {
+      await clearQueuePlaylistCache();
       return null;
     }
     const playlistId = await createQueuePlaylist(interactive);
-    await setState({ playlistId });
+    await setState({
+      playlistId,
+      queueMap: {},
+      queueFetchedAt: 0
+    });
     return playlistId;
   }
 
@@ -405,32 +427,7 @@ async function ensureQueuePlaylist(options = {}) {
   return playlistId;
 }
 
-async function fetchQueueMap(options = {}) {
-  const { interactive = false, force = false } = options;
-  const state = await getState();
-  const cacheIsFresh = Date.now() - (state.queueFetchedAt || 0) < QUEUE_CACHE_TTL_MS;
-
-  if (!interactive && !hasCachedAuth(state)) {
-    return state.queueMap || {};
-  }
-
-  if (!force && cacheIsFresh && state.playlistId) {
-    return state.queueMap || {};
-  }
-
-  const playlistId = await ensureQueuePlaylist({
-    interactive,
-    createIfMissing: false
-  });
-
-  if (!playlistId) {
-    await setState({
-      queueMap: {},
-      queueFetchedAt: Date.now()
-    });
-    return {};
-  }
-
+async function readQueueMapFromPlaylist(playlistId, interactive = false) {
   const queueMap = {};
   let pageToken = "";
 
@@ -455,6 +452,68 @@ async function fetchQueueMap(options = {}) {
 
     pageToken = result.nextPageToken || "";
   } while (pageToken);
+
+  return queueMap;
+}
+
+async function fetchQueueMap(options = {}) {
+  const {
+    interactive = false,
+    force = false,
+    createIfMissing = false,
+    repairMissingPlaylist = true
+  } = options;
+  const state = await getState();
+  const cacheIsFresh = Date.now() - (state.queueFetchedAt || 0) < QUEUE_CACHE_TTL_MS;
+
+  if (!interactive && !hasCachedAuth(state)) {
+    return state.queueMap || {};
+  }
+
+  if (!force && cacheIsFresh && state.playlistId) {
+    return state.queueMap || {};
+  }
+
+  let playlistId = await ensureQueuePlaylist({
+    interactive,
+    forceRefresh: force,
+    createIfMissing
+  });
+
+  if (!playlistId) {
+    await setState({
+      queueMap: {},
+      queueFetchedAt: Date.now()
+    });
+    return {};
+  }
+
+  let queueMap;
+  try {
+    queueMap = await readQueueMapFromPlaylist(playlistId, interactive);
+  } catch (error) {
+    if (!repairMissingPlaylist || !isMissingPlaylistError(error)) {
+      throw error;
+    }
+
+    await clearQueuePlaylistCache();
+    playlistId = await ensureQueuePlaylist({
+      interactive,
+      forceRefresh: true,
+      createIfMissing
+    });
+
+    if (!playlistId) {
+      await setState({
+        authConnected: true,
+        queueMap: {},
+        queueFetchedAt: Date.now()
+      });
+      return {};
+    }
+
+    queueMap = await readQueueMapFromPlaylist(playlistId, interactive);
+  }
 
   await setState({
     authConnected: true,
@@ -512,12 +571,17 @@ async function addVideoToQueue(videoId, options = {}) {
   }
 
   const { interactive = true } = options;
-  const playlistId = await ensureQueuePlaylist({
+  let playlistId = await ensureQueuePlaylist({
     interactive,
     createIfMissing: true
   });
 
-  const queueMap = await fetchQueueMap({ interactive });
+  const queueMap = await fetchQueueMap({
+    interactive,
+    force: true,
+    createIfMissing: true
+  });
+  playlistId = (await getState()).playlistId || playlistId;
   if (queueMap[normalizedId]) {
     return {
       changed: false,
@@ -565,7 +629,7 @@ async function removeVideoFromQueue(videoId, options = {}) {
   }
 
   const { interactive = true } = options;
-  const playlistId = await ensureQueuePlaylist({
+  let playlistId = await ensureQueuePlaylist({
     interactive,
     createIfMissing: false
   });
@@ -579,11 +643,30 @@ async function removeVideoFromQueue(videoId, options = {}) {
     };
   }
 
-  let queueMap = await fetchQueueMap({ interactive, force: false });
+  let queueMap = await fetchQueueMap({ interactive, force: true });
+  playlistId = (await getState()).playlistId || null;
+  if (!playlistId) {
+    return {
+      changed: false,
+      videoId: normalizedId,
+      inQueue: false,
+      playlistId: null
+    };
+  }
+
   let playlistItemId = queueMap[normalizedId];
 
   if (!playlistItemId) {
     queueMap = await fetchQueueMap({ interactive, force: true });
+    playlistId = (await getState()).playlistId || null;
+    if (!playlistId) {
+      return {
+        changed: false,
+        videoId: normalizedId,
+        inQueue: false,
+        playlistId: null
+      };
+    }
     playlistItemId = queueMap[normalizedId];
   }
 
@@ -619,6 +702,7 @@ async function removeVideoFromQueue(videoId, options = {}) {
 async function openQueuePlaylist() {
   const playlistId = await ensureQueuePlaylist({
     interactive: true,
+    forceRefresh: true,
     createIfMissing: true
   });
 
@@ -636,7 +720,8 @@ async function authenticate(options = {}) {
   });
   const queueMap = await fetchQueueMap({
     interactive,
-    force: true
+    force: true,
+    createIfMissing: true
   });
 
   return {
