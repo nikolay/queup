@@ -110,7 +110,7 @@ The workflow uses Chrome Web Store API v2 to:
 4. Fetch upload status.
 5. Submit the item for review.
 
-By default, manual and tag-triggered submissions use `STAGED_PUBLISH`, so approved updates are staged for manual release instead of immediately published.
+By default, tag-triggered submissions use `DEFAULT_PUBLISH`, so approved updates publish automatically after Chrome Web Store review. Manual workflow runs can still choose `STAGED_PUBLISH` when you want an approved update to wait for manual release.
 
 ### Verified CRX uploads
 

@@ -9,11 +9,11 @@ on:
       publish_type:
         description: "Publish behavior after review"
         required: true
-        default: "STAGED_PUBLISH"
+        default: "DEFAULT_PUBLISH"
         type: choice
         options:
-          - "STAGED_PUBLISH"
           - "DEFAULT_PUBLISH"
+          - "STAGED_PUBLISH"
       submit_for_review:
         description: "Submit the uploaded package for Chrome Web Store review"
         required: true
@@ -166,7 +166,7 @@ jobs:
       - name: Submit for review
         if: github.event_name != 'workflow_dispatch' || inputs.submit_for_review
         run: |
-          publish_type="${{ inputs.publish_type || 'STAGED_PUBLISH' }}"
+          publish_type="${{ inputs.publish_type || 'DEFAULT_PUBLISH' }}"
           response_file="$(mktemp)"
           status="$(curl -sS --retry 3 --retry-delay 5 \
             -o "${response_file}" \
