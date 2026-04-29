@@ -24,6 +24,7 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
    - App name: `QueUp`
    - Homepage: `https://queup.io`
    - Privacy policy: `https://queup.io/privacy.html`
+   - Terms of service: `https://queup.io/terms.html`
    - Scope: `https://www.googleapis.com/auth/youtube`
 4. Create an OAuth client:
    - Application type: **Chrome Extension**
@@ -59,6 +60,7 @@ The static site is in `site/` with:
 
 - `site/index.html`
 - `site/privacy.html`
+- `site/terms.html`
 - `site/styles.css`
 - `site/CNAME` (`queup.io`)
 
