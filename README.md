@@ -139,3 +139,7 @@ Keep the private key somewhere secure outside the repository. If it is lost, Chr
 ## Troubleshooting OAuth
 
 QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If Chrome's built-in prompt does not open, the setup page falls back to `chrome.identity.launchWebAuthFlow` and opens a Google sign-in window. The fallback keeps the returned access token in Chrome session storage only, so it is not persisted after the browser session.
+
+### `Channel not found`
+
+If the YouTube API returns `Channel not found`, the selected Google account does not have an active YouTube channel that can own playlists yet. Open YouTube with that account, finish creating or activating a channel if prompted, then reconnect QueUp. For Google Workspace accounts, the organization admin may need to allow YouTube channel creation before QueUp can create the private **Que** playlist.

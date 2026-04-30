@@ -166,7 +166,14 @@ async function authenticateWithBackground(auth) {
   return sendMessage(message);
 }
 
+function responseError(response, fallback) {
+  const error = new Error(response?.userMessage || response?.error || fallback);
+  error.response = response || null;
+  return error;
+}
+
 function diagnosticDetails(error, extra = "") {
+  const response = error?.response || null;
   const lines = [
     `Installed QueUp version: ${manifest.version || "unknown"}`,
     `Extension ID: ${chrome.runtime.id}`,
@@ -181,11 +188,19 @@ function diagnosticDetails(error, extra = "") {
     lines.push("", extra);
   }
 
-  lines.push(
-    "",
-    "If the fallback window reports a redirect URI problem, add this redirect URI to a Web Application OAuth client for QueUp:",
-    chrome.identity.getRedirectURL("oauth2")
-  );
+  if (response?.requiresYouTubeChannel) {
+    lines.push(
+      "",
+      "QueUp stores your queue in a private YouTube playlist. Google accounts need an active YouTube channel before the YouTube API can create or update playlists.",
+      "Open YouTube with this account, finish creating or activating a channel if prompted, then return here and reconnect QueUp."
+    );
+  } else {
+    lines.push(
+      "",
+      "If the fallback window reports a redirect URI problem, add this redirect URI to a Web Application OAuth client for QueUp:",
+      chrome.identity.getRedirectURL("oauth2")
+    );
+  }
 
   return lines.join("\n");
 }
@@ -222,7 +237,7 @@ connectButton.addEventListener("click", async () => {
 
     const response = await authenticateWithBackground(auth);
     if (!response?.ok) {
-      throw new Error(response?.userMessage || response?.error || "Unable to prepare Que playlist.");
+      throw responseError(response, "Unable to prepare Que playlist.");
     }
 
     setStatus("Connected. Your private Que playlist is ready.");

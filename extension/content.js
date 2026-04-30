@@ -12,6 +12,7 @@
     openQueue: "Open Que",
     signInOpenQueue: "Sign in to open Que",
     signInRequired: "Open QueUp to connect",
+    setupYouTube: "Set up YouTube",
     timedOut: "QueUp timed out",
     failed: "QueUp error"
   };
@@ -185,6 +186,9 @@
   }
 
   function buttonMessageForError(response) {
+    if (response?.requiresYouTubeChannel) {
+      return TEXT.setupYouTube;
+    }
     if (response?.requiresAuth) {
       return TEXT.signInRequired;
     }
@@ -321,7 +325,11 @@
       const response = await sendMessage({ type: "OPEN_QUEUE" });
       button.disabled = false;
       if (!response?.ok) {
-        button.textContent = response?.requiresAuth ? TEXT.signInOpenQueue : TEXT.failed;
+        button.textContent = response?.requiresYouTubeChannel
+          ? TEXT.setupYouTube
+          : response?.requiresAuth
+            ? TEXT.signInOpenQueue
+            : TEXT.failed;
         button.title = response?.userMessage || response?.error || "Unable to open Que.";
         showToast(button.title, true);
         window.setTimeout(() => {

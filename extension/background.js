@@ -9,6 +9,8 @@ const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
 const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
 const API_REQUEST_TIMEOUT_MS = 25 * 1000;
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const YOUTUBE_CHANNEL_REQUIRED_MESSAGE =
+  "QueUp connected to Google, but this Google account does not have an active YouTube channel yet. Open YouTube with this account and finish creating or activating a YouTube channel, then reconnect QueUp. If this is a Google Workspace account, your admin may need to allow YouTube channel creation.";
 const INTERACTIVE_MESSAGE_TYPES = new Set([
   "ADD_VIDEO",
   "AUTHENTICATE",
@@ -246,12 +248,16 @@ function setBadge(text, color = "#a5183f") {
 }
 
 function errorPayload(error, context = "") {
-  const message = String(error?.message || "Unknown error.");
+  const rawMessage = String(error?.message || "Unknown error.");
+  const requiresYouTubeChannel = isMissingChannelError(error);
   return {
     at: new Date().toISOString(),
     context,
-    message,
+    message: requiresYouTubeChannel ? YOUTUBE_CHANNEL_REQUIRED_MESSAGE : rawMessage,
+    technicalMessage: requiresYouTubeChannel ? rawMessage : null,
     requiresAuth: isLikelyAuthError(error),
+    requiresYouTubeChannel,
+    apiReason: error?.apiReason || null,
     status: error?.status || null
   };
 }
@@ -318,8 +324,14 @@ async function youtubeRequest(endpoint, options = {}) {
   if (!response.ok) {
     const text = await response.text();
     let apiMessage = text;
+    let apiReason = null;
+    let apiStatus = null;
+    let apiErrors = [];
     try {
       const parsed = JSON.parse(text);
+      apiErrors = Array.isArray(parsed?.error?.errors) ? parsed.error.errors : [];
+      apiReason = apiErrors[0]?.reason || parsed?.error?.status || null;
+      apiStatus = parsed?.error?.status || null;
       apiMessage = parsed?.error?.message || text;
     } catch (_error) {
       // Keep the raw API body when it is not JSON.
@@ -327,6 +339,9 @@ async function youtubeRequest(endpoint, options = {}) {
 
     const error = new Error(`YouTube API error ${response.status}: ${apiMessage}`);
     error.status = response.status;
+    error.apiReason = apiReason;
+    error.apiStatus = apiStatus;
+    error.apiErrors = apiErrors;
     throw error;
   }
 
@@ -373,6 +388,14 @@ function isMissingPlaylistError(error) {
     message.includes("playlistId") ||
     /playlist.*cannot be found/i.test(message) ||
     /playlist.*not found/i.test(message)
+  );
+}
+
+function isMissingChannelError(error) {
+  const message = String(error?.message || "");
+  return error?.status === 404 && (
+    error?.apiReason === "channelNotFound" ||
+    /channel.*not found/i.test(message)
   );
 }
 
@@ -833,14 +856,20 @@ async function disconnectYoutube() {
 function asResponseError(error, context = "") {
   const message = String(error?.message || "Unknown error.");
   const requiresAuth = isLikelyAuthError(error);
+  const requiresYouTubeChannel = isMissingChannelError(error);
   return {
     ok: false,
     context,
     error: message,
     requiresAuth,
-    userMessage: requiresAuth
-      ? `Connect YouTube to continue: ${message}. Click Connect YouTube, finish Google sign-in, then try again.`
-      : message
+    requiresYouTubeChannel,
+    status: error?.status || null,
+    apiReason: error?.apiReason || null,
+    userMessage: requiresYouTubeChannel
+      ? YOUTUBE_CHANNEL_REQUIRED_MESSAGE
+      : requiresAuth
+        ? `Connect YouTube to continue: ${message}. Click Connect YouTube, finish Google sign-in, then try again.`
+        : message
   };
 }
 
