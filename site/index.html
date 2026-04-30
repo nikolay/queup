@@ -15,14 +15,15 @@
       content="Queue YouTube videos into your own private Que playlist, then watch them when you are ready."
     />
     <meta property="og:url" content="https://queup.io/" />
-    <meta property="og:image" content="https://queup.io/assets/icon-128.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="https://queup.io/assets/icon-16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="https://queup.io/assets/icon-32.png" />
-    <link rel="apple-touch-icon" href="https://queup.io/assets/icon-128.png" />
+    <meta property="og:image" content="https://queup.io/assets/icon-512.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/icon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -32,7 +33,7 @@
     <div class="ambient ambient-b"></div>
     <header class="topbar">
       <a class="brand" href="https://queup.io/">
-        <img class="brand-mark" src="https://queup.io/assets/icon-32.png" width="32" height="32" alt="" />
+        <img class="brand-mark" src="assets/queup-logo.svg" width="36" height="36" alt="" />
         <span>QueUp</span>
       </a>
       <nav>
@@ -45,41 +46,62 @@
 
     <main>
       <section class="hero">
-        <p class="kicker">YouTube watch queue</p>
-        <h1>Save videos for later without losing your place.</h1>
-        <p>
-          QueUp adds <span class="queue-token">+ Que</span> and <span class="queue-token queue-token-remove">- Que</span> controls to YouTube videos and recommendations. Your list stays in your own private YouTube playlist named <strong>Que</strong>.
-        </p>
-        <div class="cta-row">
-          <a
-            class="store-badge-link"
-            href="https://chromewebstore.google.com/detail/queup/fldmblmmafcjlpgnoppjdpkfkkeejnkk"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Available in the Chrome Web Store"
-            ><img
-              class="store-badge"
-              src="https://queup.io/assets/chrome-web-store-badge.png"
-              width="248"
-              height="75"
-              alt="Available in the Chrome Web Store"
-            /></a
-          >
-          <a
-            class="github-link"
-            href="https://github.com/nikolay/queup"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="QueUp source code on GitHub"
-            ><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
-              <path
-                fill="currentColor"
-                d="M12 2C6.48 2 2 6.58 2 12.26c0 4.54 2.87 8.39 6.84 9.75.5.09.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.85.09-.67.35-1.12.64-1.38-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.28 9.28 0 0 1 12 7.01c.85 0 1.7.12 2.5.35 1.9-1.33 2.74-1.05 2.74-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.56 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.8 0 .27.18.59.69.49A10.1 10.1 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"
-              />
-            </svg>
-            <span>Source code</span></a
-          >
+        <div class="hero-copy">
+          <h1>Build a real queue for YouTube.</h1>
+          <p>
+            QueUp adds <span class="queue-token">+ Que</span> and <span class="queue-token queue-token-remove">- Que</span> controls to YouTube videos and recommendations. Your list stays in your own private YouTube playlist named <strong>Que</strong>.
+          </p>
+          <div class="cta-row">
+            <a
+              class="store-badge-link"
+              href="https://chromewebstore.google.com/detail/queup/fldmblmmafcjlpgnoppjdpkfkkeejnkk"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Available in the Chrome Web Store"
+              ><img
+                class="store-badge"
+                src="assets/chrome-web-store-badge.png"
+                width="248"
+                height="75"
+                alt="Available in the Chrome Web Store"
+              /></a
+            >
+            <a
+              class="github-link"
+              href="https://github.com/nikolay/queup"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="QueUp source code on GitHub"
+              ><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+                <path
+                  fill="currentColor"
+                  d="M12 2C6.48 2 2 6.58 2 12.26c0 4.54 2.87 8.39 6.84 9.75.5.09.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.85.09-.67.35-1.12.64-1.38-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.28 9.28 0 0 1 12 7.01c.85 0 1.7.12 2.5.35 1.9-1.33 2.74-1.05 2.74-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.56 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.8 0 .27.18.59.69.49A10.1 10.1 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"
+                />
+              </svg>
+              <span>Source code</span></a
+            >
+          </div>
         </div>
+
+        <aside class="hero-visual" aria-label="QueUp interface preview">
+          <img class="hero-logo" src="assets/queup-logo.svg" width="168" height="168" alt="" />
+          <div class="video-preview video-preview-main">
+            <span class="play-dot"></span>
+            <div>
+              <strong>Architecture documentary</strong>
+              <span>Saved for later</span>
+            </div>
+            <span class="mock-que-button">+ Que</span>
+          </div>
+          <div class="video-preview video-preview-next">
+            <span class="play-dot"></span>
+            <div>
+              <strong>Deep history lecture</strong>
+              <span>Already queued</span>
+            </div>
+            <span class="mock-que-button mock-que-button-remove">- Que</span>
+          </div>
+        </aside>
       </section>
 
       <section id="features" class="grid">

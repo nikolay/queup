@@ -51,11 +51,15 @@ jobs:
             exit 1
           fi
 
+      - name: Generate bitmap assets
+        run: node scripts/generate-assets.mjs
+
       - name: Validate extension
         run: |
           python3 -m json.tool extension/manifest.json >/dev/null
           node --check extension/background.js
           node --check extension/content.js
+          node --check extension/connect.js
           node --check extension/popup.js
 
       - name: Package extension

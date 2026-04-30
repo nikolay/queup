@@ -5,8 +5,8 @@
 body {
   margin: 0;
   min-width: 300px;
-  background: linear-gradient(150deg, #f7fdfb, #fff8ea);
-  color: #1b2d29;
+  background: linear-gradient(150deg, #fff9f5, #fff0ef);
+  color: #18110f;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -14,9 +14,22 @@ body {
   padding: 16px;
 }
 
+.popup-brand {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  margin: 0 0 8px;
+}
+
+.popup-brand img {
+  border-radius: 9px;
+  box-shadow: 0 8px 18px rgba(255, 0, 0, 0.18);
+  display: block;
+}
+
 h1 {
   font-size: 22px;
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 .subhead {
@@ -26,8 +39,8 @@ h1 {
 }
 
 .connection {
-  background: rgba(27, 111, 91, 0.09);
-  border: 1px solid rgba(27, 111, 91, 0.16);
+  background: rgba(255, 0, 0, 0.08);
+  border: 1px solid rgba(255, 0, 0, 0.16);
   border-radius: 12px;
   color: #51645f;
   font-size: 12px;
@@ -38,12 +51,12 @@ h1 {
 }
 
 .connection--connected {
-  color: #1b6f5b;
+  color: #d90000;
 }
 
 button {
   appearance: none;
-  background: #1b6f5b;
+  background: #d90000;
   border: none;
   border-radius: 10px;
   color: #fff;
@@ -60,7 +73,7 @@ button[hidden] {
 }
 
 button:hover {
-  background: #23866d;
+  background: #ff0000;
 }
 
 button:disabled {
@@ -69,12 +82,12 @@ button:disabled {
 }
 
 button.secondary {
-  background: #e4f2ee;
-  color: #1b6f5b;
+  background: #fff0ef;
+  color: #d90000;
 }
 
 button.secondary:hover {
-  background: #d6ece5;
+  background: #ffe0dc;
 }
 
 #status {

@@ -4,7 +4,9 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
 
 ## Project layout
 
+- `assets/bitmaps.yml`: generated bitmap manifest for SVG-to-PNG logo outputs.
 - `extension/`: Manifest V3 Chrome extension source.
+- `scripts/generate-assets.mjs`: dependency-free SVG-to-PNG asset generator.
 - `site/`: Static website for `https://queup.io`.
 
 ## What the extension does
@@ -70,6 +72,24 @@ The published site is served from the custom domain:
 - `https://queup.io/`
 
 The Pages custom domain is configured in GitHub and HTTPS is enforced. Keep `site/CNAME` in the deployed artifact so future site deployments preserve the custom-domain intent.
+
+## Logo and generated assets
+
+The source logo is `site/assets/queup-logo.svg`. PNG derivatives for Chrome extension icons, website favicons, touch icons, and Chrome Web Store assets are defined in `assets/bitmaps.yml`.
+
+Regenerate the PNG assets locally with:
+
+```bash
+node scripts/generate-assets.mjs
+```
+
+Verify committed PNGs are up to date with:
+
+```bash
+node scripts/generate-assets.mjs --check
+```
+
+GitHub Actions regenerates assets before GitHub Pages deployment and Chrome Web Store packaging. The `Verify Generated Assets` workflow also checks that committed PNGs match the SVG source and YAML manifest.
 
 ## Sponsorship
 

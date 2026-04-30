@@ -1,0 +1,38 @@
+name: Verify Generated Assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "assets/**"
+      - ".github/workflows/assets.yml"
+      - "scripts/generate-assets.mjs"
+      - "site/assets/queup-logo.svg"
+      - "extension/icons/**"
+      - "site/assets/icon-*.png"
+      - "store-assets/queup-store-icon-128.png"
+  pull_request:
+    paths:
+      - "assets/**"
+      - ".github/workflows/assets.yml"
+      - "scripts/generate-assets.mjs"
+      - "site/assets/queup-logo.svg"
+      - "extension/icons/**"
+      - "site/assets/icon-*.png"
+      - "store-assets/queup-store-icon-128.png"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generated-bitmaps:
+    name: Generated bitmap assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Regenerate and verify PNG assets
+        run: node scripts/generate-assets.mjs --check

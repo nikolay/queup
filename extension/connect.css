@@ -4,8 +4,8 @@
 
 body {
   align-items: center;
-  background: radial-gradient(circle at 20% 10%, #fff4d2 0, #f8fffb 42%, #dff4ef 100%);
-  color: #12251f;
+  background: radial-gradient(circle at 20% 10%, #fff0ef 0, #fffaf5 42%, #ffe3dd 100%);
+  color: #18110f;
   display: flex;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
   justify-content: center;
@@ -18,14 +18,21 @@ body {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(18, 37, 31, 0.12);
   border-radius: 26px;
-  box-shadow: 0 24px 70px rgba(20, 56, 44, 0.14);
+  box-shadow: 0 24px 70px rgba(255, 0, 0, 0.14);
   max-width: 560px;
   padding: 34px;
   width: 100%;
 }
 
+.connect-logo {
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(255, 0, 0, 0.2);
+  display: block;
+  margin: 0 0 18px;
+}
+
 .eyebrow {
-  color: #17604f;
+  color: #d90000;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -47,10 +54,10 @@ p {
 
 button {
   appearance: none;
-  background: linear-gradient(130deg, #ffbf55, #ff8d32);
+  background: linear-gradient(130deg, #ff0000, #d10000);
   border: 0;
   border-radius: 14px;
-  color: #291604;
+  color: #ffffff;
   cursor: pointer;
   font-size: 15px;
   font-weight: 800;
@@ -64,12 +71,12 @@ button:disabled {
 }
 
 button.secondary {
-  background: rgba(23, 96, 79, 0.1);
-  color: #17604f;
+  background: rgba(255, 0, 0, 0.08);
+  color: #d90000;
 }
 
 #status {
-  color: #3e514a;
+  color: #665854;
   font-size: 14px;
   margin-top: 8px;
 }

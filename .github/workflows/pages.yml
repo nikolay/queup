@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
+      - "assets/**"
       - ".github/workflows/pages.yml"
+      - "scripts/generate-assets.mjs"
       - "site/**"
   workflow_dispatch:
 
@@ -27,6 +29,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Generate bitmap assets
+        run: node scripts/generate-assets.mjs
 
       - name: Prepare site artifact
         run: |

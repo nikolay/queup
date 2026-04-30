@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect x="0" y="0" width="1024" height="1024" rx="168" fill="#FF0000"/>
+
+  <!-- Q ring -->
+  <circle cx="512" cy="512" r="260"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="120"/>
+
+  <!-- Q tail: shorter and only slightly inside the ring -->
+  <line x1="670" y1="670" x2="835" y2="835"
+        stroke="#FFFFFF"
+        stroke-width="120"
+        stroke-linecap="round"/>
+
+  <!-- Play button, optically centered slightly left -->
+  <polygon points="460,400 460,624 640,512"
+           fill="#FFFFFF"/>
+</svg>
