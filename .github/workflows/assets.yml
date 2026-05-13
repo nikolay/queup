@@ -7,20 +7,30 @@ on:
     paths:
       - "assets/**"
       - ".github/workflows/assets.yml"
+      - "package.json"
+      - "package-lock.json"
       - "scripts/generate-assets.mjs"
       - "site/assets/queup-logo.svg"
       - "extension/icons/**"
       - "site/assets/icon-*.png"
       - "store-assets/queup-store-icon-128.png"
+      - "store-assets/queup-google-auth-logo-120.png"
+      - "store-assets/queup-youtube-channel.svg"
+      - "store-assets/queup-youtube-channel-2048x1152.png"
   pull_request:
     paths:
       - "assets/**"
       - ".github/workflows/assets.yml"
+      - "package.json"
+      - "package-lock.json"
       - "scripts/generate-assets.mjs"
       - "site/assets/queup-logo.svg"
       - "extension/icons/**"
       - "site/assets/icon-*.png"
       - "store-assets/queup-store-icon-128.png"
+      - "store-assets/queup-google-auth-logo-120.png"
+      - "store-assets/queup-youtube-channel.svg"
+      - "store-assets/queup-youtube-channel-2048x1152.png"
   workflow_dispatch:
 
 permissions:
@@ -34,5 +44,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Regenerate and verify PNG assets
-        run: node scripts/generate-assets.mjs --check
+        run: npm run assets:check

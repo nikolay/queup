@@ -5,8 +5,6 @@ const QUEUE_TITLE = "Que";
 const QUEUE_DESCRIPTION = "Videos saved with QueUp.";
 const QUEUE_CACHE_TTL_MS = 2 * 60 * 1000;
 const SESSION_AUTH_EXPIRY_SKEW_MS = 60 * 1000;
-const SILENT_AUTH_TIMEOUT_MS = 8 * 1000;
-const INTERACTIVE_AUTH_TIMEOUT_MS = 60 * 1000;
 const API_REQUEST_TIMEOUT_MS = 25 * 1000;
 const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 const YOUTUBE_CHANNEL_REQUIRED_MESSAGE =
@@ -57,15 +55,7 @@ function hasCachedAuth(state) {
 }
 
 function isConnectedState(state, sessionAuthActive) {
-  if (!state.authConnected) {
-    return false;
-  }
-
-  if (state.authMode === "chromeIdentity") {
-    return true;
-  }
-
-  return Boolean(sessionAuthActive);
+  return Boolean(state.authConnected && sessionAuthActive);
 }
 
 function isLikelyAuthError(error) {
@@ -81,6 +71,7 @@ function isLikelyAuthError(error) {
     "User interaction required",
     "The user did not approve",
     "No auth token",
+    "No active Google sign-in session",
     "Authentication token",
     "not authorized",
     "not signed in",
@@ -88,55 +79,6 @@ function isLikelyAuthError(error) {
     "invalid_grant"
   ];
   return authSnippets.some((snippet) => message.includes(snippet));
-}
-
-function withTimeout(promise, timeoutMs, timeoutMessage) {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-
-    Promise.resolve(promise)
-      .then(resolve, reject)
-      .finally(() => clearTimeout(timeoutId));
-  });
-}
-
-function extractAuthToken(result) {
-  if (typeof result === "string") {
-    return result;
-  }
-  return result?.token || null;
-}
-
-async function getAuthToken(interactive = false) {
-  const timeoutMs = interactive ? INTERACTIVE_AUTH_TIMEOUT_MS : SILENT_AUTH_TIMEOUT_MS;
-  const timeoutMessage = interactive
-    ? "Timed out waiting for Google sign-in. Open QueUp from the Chrome toolbar, click Connect YouTube, and make sure Chrome is signed into the Google account you use for YouTube."
-    : "No cached Google sign-in is available yet.";
-  const details = {
-    interactive: Boolean(interactive)
-  };
-
-  const result = await withTimeout(
-    new Promise((resolve, reject) => {
-      chrome.identity.getAuthToken(details, (tokenResult, grantedScopes) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message || "No auth token."));
-          return;
-        }
-        resolve(typeof tokenResult === "string" ? tokenResult : { ...tokenResult, grantedScopes });
-      });
-    }),
-    timeoutMs,
-    timeoutMessage
-  );
-  const token = extractAuthToken(result);
-  if (!token) {
-    throw new Error("Chrome identity did not return an auth token.");
-  }
-
-  return token;
 }
 
 async function getSessionAuth() {
@@ -189,10 +131,11 @@ async function getRequestAuth(interactive = false) {
     };
   }
 
-  return {
-    source: "chromeIdentity",
-    token: await getAuthToken(interactive)
-  };
+  throw new Error(
+    interactive
+      ? "No active Google sign-in session is available. Open QueUp from the Chrome toolbar, click Connect YouTube, and finish Google sign-in."
+      : "No active Google sign-in session is available."
+  );
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -222,15 +165,7 @@ async function clearChromeIdentityTokens() {
   try {
     if (chrome.identity.clearAllCachedAuthTokens) {
       await chrome.identity.clearAllCachedAuthTokens();
-      return;
     }
-  } catch (_error) {
-    // Fall back to removing the current token when the broader API is unavailable.
-  }
-
-  try {
-    const token = await getAuthToken(false);
-    await removeCachedToken(token);
   } catch (_error) {
     // A disconnect action should succeed even if Chrome has no cached token.
   }
@@ -547,6 +482,10 @@ async function fetchQueueMap(options = {}) {
   } = options;
   const state = await getState();
   const cacheIsFresh = Date.now() - (state.queueFetchedAt || 0) < QUEUE_CACHE_TTL_MS;
+
+  if (!interactive && !(await getUsableSessionToken())) {
+    return state.queueMap || {};
+  }
 
   if (!interactive && !hasCachedAuth(state)) {
     return state.queueMap || {};
@@ -919,8 +858,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         await setSessionAuth(message.accessToken, message.expiresInSeconds);
       }
       await setState({
-        authMode: message.authSource === "Chrome profile" ? "chromeIdentity" : "session",
-        authSource: message.authSource || null
+        authMode: "webAuthCodePkce",
+        authSource: message.authSource || "Google sign-in window"
       });
       const result = await authenticate({
         interactive: message.interactive !== false

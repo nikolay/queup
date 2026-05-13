@@ -1,7 +1,7 @@
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
 const WEB_AUTH_CLIENT_ID = "340590105282-nncmov0f44k63mef91v0b0eu8kdfeq6s.apps.googleusercontent.com";
-const CHROME_IDENTITY_TIMEOUT_MS = 20 * 1000;
 const WEB_AUTH_TIMEOUT_MS = 120 * 1000;
+const TOKEN_EXCHANGE_TIMEOUT_MS = 25 * 1000;
 
 const connectButton = document.getElementById("connectButton");
 const openYouTubeButton = document.getElementById("openYouTubeButton");
@@ -28,16 +28,6 @@ function showVersion() {
   setDetails(`Installed QueUp version: ${version}`);
 }
 
-function tokenFromResult(result, grantedScopes) {
-  if (typeof result === "string") {
-    return { token: result, grantedScopes: grantedScopes || [] };
-  }
-  return {
-    token: result?.token || null,
-    grantedScopes: result?.grantedScopes || []
-  };
-}
-
 function withTimeout(promise, timeoutMs, timeoutMessage) {
   return new Promise((resolve, reject) => {
     const timeoutId = window.setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
@@ -47,27 +37,31 @@ function withTimeout(promise, timeoutMs, timeoutMessage) {
   });
 }
 
-function getChromeIdentityToken() {
-  return withTimeout(
-    new Promise((resolve, reject) => {
-      chrome.identity.getAuthToken({ interactive: true }, (result, grantedScopes) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message || "Chrome identity failed."));
-          return;
-        }
+function base64UrlFromBytes(bytes) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "");
+}
 
-        const auth = tokenFromResult(result, grantedScopes);
-        if (!auth.token) {
-          reject(new Error("Chrome identity did not return an auth token."));
-          return;
-        }
+function randomBase64Url(byteLength = 32) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return base64UrlFromBytes(bytes);
+}
 
-        resolve({ ...auth, source: "Chrome profile" });
-      });
-    }),
-    CHROME_IDENTITY_TIMEOUT_MS,
-    "Timed out waiting for Chrome's built-in Google consent prompt."
-  );
+async function sha256Base64Url(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return base64UrlFromBytes(new Uint8Array(digest));
+}
+
+async function createPkcePair() {
+  const verifier = randomBase64Url(32);
+  return {
+    challenge: await sha256Base64Url(verifier),
+    verifier
+  };
 }
 
 function launchWebAuthFlow(details) {
@@ -86,69 +80,129 @@ function launchWebAuthFlow(details) {
   );
 }
 
-function parseOAuthRedirect(responseUrl) {
+function redirectParams(responseUrl) {
   if (!responseUrl) {
     throw new Error("Google OAuth did not return a redirect URL.");
   }
 
   const url = new URL(responseUrl);
-  const params = new URLSearchParams(url.hash ? url.hash.slice(1) : url.search.slice(1));
+  const params = new URLSearchParams(url.search);
+  if (url.hash) {
+    const hashParams = new URLSearchParams(url.hash.slice(1));
+    for (const [key, value] of hashParams) {
+      if (!params.has(key)) {
+        params.set(key, value);
+      }
+    }
+  }
+  return params;
+}
+
+function parseAuthorizationRedirect(responseUrl, expectedState) {
+  const params = redirectParams(responseUrl);
+  const actualState = params.get("state");
+  if (!actualState || actualState !== expectedState) {
+    throw new Error("Google OAuth returned an unexpected state. Try connecting again.");
+  }
+
   const oauthError = params.get("error");
   if (oauthError) {
     const description = params.get("error_description");
     throw new Error(`Google OAuth error: ${description || oauthError}`);
   }
 
-  const token = params.get("access_token");
-  if (!token) {
-    throw new Error("Google OAuth did not return an access token.");
+  const code = params.get("code");
+  if (!code) {
+    throw new Error("Google OAuth did not return an authorization code.");
+  }
+
+  return code;
+}
+
+async function exchangeAuthorizationCode({ code, codeVerifier, redirectUri }) {
+  const body = new URLSearchParams({
+    client_id: WEB_AUTH_CLIENT_ID,
+    code,
+    code_verifier: codeVerifier,
+    grant_type: "authorization_code",
+    redirect_uri: redirectUri
+  });
+
+  const response = await withTimeout(
+    fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body
+    }),
+    TOKEN_EXCHANGE_TIMEOUT_MS,
+    "Timed out exchanging Google's authorization code."
+  );
+
+  const text = await response.text();
+  let result = {};
+  try {
+    result = text ? JSON.parse(text) : {};
+  } catch (_error) {
+    result = { error_description: text || "Google returned a non-JSON token response." };
+  }
+
+  if (!response.ok) {
+    const description = result.error_description || result.error || response.statusText;
+    throw new Error(`Google token exchange failed: ${description}`);
+  }
+
+  if (!result.access_token) {
+    throw new Error("Google token exchange did not return an access token.");
   }
 
   return {
-    expiresInSeconds: Number(params.get("expires_in") || 3600),
-    grantedScopes: (params.get("scope") || YOUTUBE_SCOPE).split(/\s+/).filter(Boolean),
+    expiresInSeconds: Number(result.expires_in || 3600),
+    grantedScopes: String(result.scope || YOUTUBE_SCOPE).split(/\s+/u).filter(Boolean),
     source: "Google sign-in window",
-    token
+    token: result.access_token
   };
 }
 
 async function getWebAuthFlowToken() {
   const redirectUri = chrome.identity.getRedirectURL("oauth2");
+  const state = randomBase64Url(32);
+  const pkce = await createPkcePair();
 
   const params = new URLSearchParams({
+    access_type: "online",
     client_id: WEB_AUTH_CLIENT_ID,
+    code_challenge: pkce.challenge,
+    code_challenge_method: "S256",
     include_granted_scopes: "true",
     prompt: "consent select_account",
     redirect_uri: redirectUri,
-    response_type: "token",
-    scope: YOUTUBE_SCOPE
+    response_type: "code",
+    scope: YOUTUBE_SCOPE,
+    state
   });
 
   const responseUrl = await launchWebAuthFlow({
     interactive: true,
     url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
   });
+  const code = parseAuthorizationRedirect(responseUrl, state);
+  const auth = await exchangeAuthorizationCode({
+    code,
+    codeVerifier: pkce.verifier,
+    redirectUri
+  });
 
   return {
-    ...parseOAuthRedirect(responseUrl),
+    ...auth,
     redirectUri
   };
 }
 
-async function getAuthTokenInteractive() {
-  try {
-    setStatus("Opening Chrome's Google consent prompt...");
-    return await getChromeIdentityToken();
-  } catch (chromeIdentityError) {
-    setStatus("Chrome did not open a prompt. Opening a Google sign-in window instead...");
-    setDetails(diagnosticDetails(chromeIdentityError, "Trying fallback Google sign-in window..."));
-    try {
-      return await getWebAuthFlowToken();
-    } catch (webAuthError) {
-      webAuthError.chromeIdentityError = chromeIdentityError;
-      throw webAuthError;
-    }
-  }
+async function getOAuthTokenInteractive() {
+  setStatus("Opening Google's secure sign-in window...");
+  return getWebAuthFlowToken();
 }
 
 async function authenticateWithBackground(auth) {
@@ -172,21 +226,14 @@ function responseError(response, fallback) {
   return error;
 }
 
-function diagnosticDetails(error, extra = "") {
+function diagnosticDetails(error) {
   const response = error?.response || null;
+  const message = String(error?.message || "");
   const lines = [
     `Installed QueUp version: ${manifest.version || "unknown"}`,
     `Extension ID: ${chrome.runtime.id}`,
-    `${error?.chromeIdentityError ? "Chrome identity error" : "Error"}: ${error?.chromeIdentityError?.message || error?.message || "Unknown error."}`
+    `Error: ${message || "Unknown error."}`
   ];
-
-  if (error?.chromeIdentityError && error?.message) {
-    lines.push(`Fallback Google sign-in error: ${error.message}`);
-  }
-
-  if (extra) {
-    lines.push("", extra);
-  }
 
   if (response?.requiresYouTubeChannel) {
     lines.push(
@@ -194,10 +241,16 @@ function diagnosticDetails(error, extra = "") {
       "QueUp stores your queue in a private YouTube playlist. Google accounts need an active YouTube channel before the YouTube API can create or update playlists.",
       "Open YouTube with this account, finish creating or activating a channel if prompted, then return here and reconnect QueUp."
     );
+  } else if (/client_secret|invalid_client/iu.test(message)) {
+    lines.push(
+      "",
+      "Google is treating the configured OAuth client as a confidential web client. QueUp cannot safely ship a client secret inside the extension.",
+      "Use a public OAuth client type that supports Authorization Code with PKCE, or add a small backend token-exchange endpoint for QueUp."
+    );
   } else {
     lines.push(
       "",
-      "If the fallback window reports a redirect URI problem, add this redirect URI to a Web Application OAuth client for QueUp:",
+      "If Google reports a redirect URI problem, add this redirect URI to the QueUp Web Auth Fallback OAuth client:",
       chrome.identity.getRedirectURL("oauth2")
     );
   }
@@ -206,13 +259,11 @@ function diagnosticDetails(error, extra = "") {
 }
 
 async function connectYouTube() {
-  const result = await withTimeout(
-    getAuthTokenInteractive(),
-    WEB_AUTH_TIMEOUT_MS + CHROME_IDENTITY_TIMEOUT_MS,
+  return withTimeout(
+    getOAuthTokenInteractive(),
+    WEB_AUTH_TIMEOUT_MS + TOKEN_EXCHANGE_TIMEOUT_MS,
     "Timed out waiting for Google authorization."
   );
-
-  return result;
 }
 
 function sendMessage(message) {
@@ -241,7 +292,7 @@ connectButton.addEventListener("click", async () => {
     }
 
     setStatus("Connected. Your private Que playlist is ready.");
-    setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nAuth source: ${auth.source || "Chrome profile"}\nGranted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
+    setDetails(`Installed QueUp version: ${manifest.version || "unknown"}\nAuth flow: Authorization Code with PKCE\nGranted scopes: ${(auth.grantedScopes || []).join(", ") || YOUTUBE_SCOPE}`);
   } catch (error) {
     setStatus(error?.message || "Unable to connect YouTube.", true);
     setDetails(diagnosticDetails(error));

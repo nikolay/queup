@@ -34,6 +34,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Read extension version
         id: extension
         run: |
@@ -52,15 +61,10 @@ jobs:
           fi
 
       - name: Generate bitmap assets
-        run: node scripts/generate-assets.mjs
+        run: npm run assets
 
       - name: Validate extension
-        run: |
-          python3 -m json.tool extension/manifest.json >/dev/null
-          node --check extension/background.js
-          node --check extension/content.js
-          node --check extension/connect.js
-          node --check extension/popup.js
+        run: npm run check:extension
 
       - name: Package extension
         id: package

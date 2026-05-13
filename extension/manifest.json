@@ -17,15 +17,10 @@
     "tabs"
   ],
   "host_permissions": [
+    "https://oauth2.googleapis.com/*",
     "https://www.youtube.com/*",
     "https://www.googleapis.com/*"
   ],
-  "oauth2": {
-    "client_id": "340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/youtube"
-    ]
-  },
   "background": {
     "service_worker": "background.js",
     "type": "module"

@@ -4,9 +4,9 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
 
 ## Project layout
 
-- `assets/bitmaps.yml`: generated bitmap manifest for SVG-to-PNG logo outputs.
+- `assets/bitmaps.json`: generated bitmap manifest for SVG-to-PNG logo outputs.
 - `extension/`: Manifest V3 Chrome extension source.
-- `scripts/generate-assets.mjs`: dependency-free SVG-to-PNG asset generator.
+- `scripts/generate-assets.mjs`: `@resvg/resvg-js` SVG-to-PNG asset generator.
 - `site/`: Static website for `https://queup.io`.
 
 ## What the extension does
@@ -29,10 +29,10 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
    - Terms of service: `https://queup.io/terms.html`
    - Scope: `https://www.googleapis.com/auth/youtube`
 4. Create an OAuth client:
-   - Application type: **Chrome Extension**
-   - Name: `QueUp Chrome Extension`
-   - Item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
-5. Put the OAuth client id into `extension/manifest.json`.
+   - Application type: **Web application**
+   - Name: `QueUp Web Auth Fallback`
+   - Authorized redirect URI: `https://fldmblmmafcjlpgnoppjdpkfkkeejnkk.chromiumapp.org/oauth2`
+5. Put the web OAuth client id into `WEB_AUTH_CLIENT_ID` in `extension/connect.js`.
 6. While the OAuth app is in **Testing** mode, add each Google account that will use the extension as a test user in Google Auth Platform > Audience.
 7. Open `chrome://extensions`.
 8. Enable **Developer mode**.
@@ -45,15 +45,17 @@ QueUp is a Chrome Extension + static website at <https://queup.io> that turns a 
 - API used: YouTube Data API v3
 - Required Google Cloud service: **YouTube Data API v3**
 - Google Cloud project: `queup-nikolay-20260426`
-- OAuth client id: `340590105282-87qk9a50ohs9fgdnugs6jfov18g5km7p.apps.googleusercontent.com`
-- Fallback web OAuth client id: `340590105282-nncmov0f44k63mef91v0b0eu8kdfeq6s.apps.googleusercontent.com`
-- Fallback web OAuth redirect URI: `https://fldmblmmafcjlpgnoppjdpkfkkeejnkk.chromiumapp.org/oauth2`
+- Web OAuth client id: `340590105282-nncmov0f44k63mef91v0b0eu8kdfeq6s.apps.googleusercontent.com`
+- Web OAuth redirect URI: `https://fldmblmmafcjlpgnoppjdpkfkkeejnkk.chromiumapp.org/oauth2`
+- OAuth flow: `chrome.identity.launchWebAuthFlow` with Authorization Code + PKCE and a per-request `state` value.
 - Chrome Web Store status: Published
 - Google Auth Platform status: Check Google Cloud Auth Platform; if the OAuth app is still in Testing, add each Google account that should connect YouTube as a test user.
 - Chrome Web Store item ID: `fldmblmmafcjlpgnoppjdpkfkkeejnkk`
 - Chrome Web Store uploads cannot include `manifest.key`; the publish workflow strips it from the packaged ZIP.
-- The OAuth client is configured for the Chrome Web Store item ID above, and app ownership is verified in Google Auth Platform.
-- Local unpacked builds with a different generated extension ID need their own Chrome Extension OAuth client or the published item ID key.
+- The web OAuth client redirect URI is configured for the Chrome Web Store item ID above, and app ownership is verified in Google Auth Platform.
+- Local unpacked builds with a different generated extension ID need their own web OAuth redirect URI or the published item ID key.
+- Earlier QueUp releases used a Chrome Extension OAuth client through `chrome.identity.getAuthToken`. Current releases do not use that client because Google Auth Platform flags it as missing caller-managed `state`.
+- If Google rejects the token exchange with `client_secret is missing`, the selected OAuth client is confidential-only. Do not put that secret in the extension; use a public client type that supports Authorization Code with PKCE or add a backend token-exchange endpoint.
 - Google Cloud's `gcloud iam oauth-clients` command is not suitable for this extension because it only supports Google Cloud/IAM scopes, not YouTube account scopes.
 
 ## Website deployment (`queup.io`)
@@ -75,21 +77,24 @@ The Pages custom domain is configured in GitHub and HTTPS is enforced. Keep `sit
 
 ## Logo and generated assets
 
-The source logo is `site/assets/queup-logo.svg`. PNG derivatives for Chrome extension icons, website favicons, touch icons, and Chrome Web Store assets are defined in `assets/bitmaps.yml`.
+The source logo is `site/assets/queup-logo.svg`. PNG derivatives for Chrome extension icons, website favicons, Chrome Web Store assets, the 120x120 Google Auth Platform logo, and the 2048x1152 YouTube channel image are defined in `assets/bitmaps.json`.
 
 Regenerate the PNG assets locally with:
 
 ```bash
-node scripts/generate-assets.mjs
+npm ci
+npm run assets
 ```
 
 Verify committed PNGs are up to date with:
 
 ```bash
-node scripts/generate-assets.mjs --check
+npm run assets:check
 ```
 
-GitHub Actions regenerates assets before GitHub Pages deployment and Chrome Web Store packaging. The `Verify Generated Assets` workflow also checks that committed PNGs match the SVG source and YAML manifest.
+GitHub Actions installs the locked Node dependencies and regenerates assets before GitHub Pages deployment and Chrome Web Store packaging. The `Verify Generated Assets` workflow also checks that committed PNGs match the SVG source and JSON manifest.
+
+The YouTube channel image uses the bundled Figtree TTF in `assets/fonts/Figtree-wght.ttf` so SVG text rasterizes consistently in local runs and CI. Its Open Font License text is stored in `assets/fonts/Figtree-OFL.txt`.
 
 ## Sponsorship
 
@@ -143,6 +148,12 @@ By default, tag-triggered submissions use `DEFAULT_PUBLISH`, so approved updates
 
 If an update was submitted with `STAGED_PUBLISH` and has already passed review, run the `Release Approved Chrome Extension` workflow to publish the approved staged item without uploading a new package.
 
+### Chrome Web Store listing
+
+The Chrome Web Store API v2 used by this repository handles package upload, publish, status, and staged rollout actions. Listing metadata and media are still maintained in the Developer Dashboard.
+
+Use `store-assets/listing.md` as the source of truth when editing the listing. The homepage URL should be `https://queup.io/`, not the GitHub Pages hostname. The current store icon source is `store-assets/queup-store-icon-128.png`, the current small promo tile source is `store-assets/queup-small-promo-tile-440x280.png`, and the current screenshot source is `store-assets/queup-screenshot-1280x800.png`.
+
 ### Verified CRX uploads
 
 Chrome Web Store Verified CRX uploads require every future package upload to be a signed `.crx` file. Generate a signing key pair with:
@@ -158,7 +169,7 @@ Keep the private key somewhere secure outside the repository. If it is lost, Chr
 
 ## Troubleshooting OAuth
 
-QueUp uses Chrome's `identity` API, which authenticates with the Google account signed into the Chrome profile. Being signed into youtube.com alone may not be enough. If Chrome's built-in prompt does not open, the setup page falls back to `chrome.identity.launchWebAuthFlow` and opens a Google sign-in window. The fallback keeps the returned access token in Chrome session storage only, so it is not persisted after the browser session.
+QueUp uses Chrome's `identity` API only to open Google's secure OAuth window and capture the `chromiumapp.org` redirect. The sign-in request uses Authorization Code + PKCE with a per-request `state` value. QueUp keeps the returned access token in Chrome session storage only, so it is not persisted after the browser session.
 
 ### `Channel not found`
 

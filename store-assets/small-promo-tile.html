@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>QueUp Small Promo Tile</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 280px;
+        margin: 0;
+        overflow: hidden;
+        width: 440px;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 0% 12%, rgba(255, 0, 0, 0.22), transparent 36%),
+          radial-gradient(circle at 96% 0%, rgba(255, 198, 99, 0.35), transparent 38%),
+          linear-gradient(135deg, #fffaf4 0%, #ffe6dd 62%, #fff6ef 100%);
+        color: #171111;
+        font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      .card {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid rgba(24, 17, 17, 0.1);
+        border-radius: 28px;
+        box-shadow: 0 22px 48px rgba(92, 14, 14, 0.16);
+        display: grid;
+        grid-template-columns: 1fr 166px;
+        height: 232px;
+        margin: 24px;
+        overflow: hidden;
+        padding: 24px 20px 24px 26px;
+        position: relative;
+      }
+
+      .card::before {
+        background: rgba(255, 0, 0, 0.1);
+        border-radius: 999px;
+        content: "";
+        height: 260px;
+        left: -22px;
+        position: absolute;
+        top: -20px;
+        transform: rotate(-18deg);
+        width: 62px;
+      }
+
+      .copy,
+      .mock {
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .brand img {
+        border-radius: 14px;
+        box-shadow: 0 10px 20px rgba(255, 0, 0, 0.25);
+        height: 48px;
+        width: 48px;
+      }
+
+      .brand strong {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+
+      h1 {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 31px;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        line-height: 1.02;
+        margin: 0 0 14px;
+      }
+
+      .pill-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .pill {
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid rgba(255, 0, 0, 0.16);
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(72, 17, 17, 0.08);
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 950;
+        gap: 5px;
+        padding: 8px 11px;
+      }
+
+      .pill span {
+        color: #ff0000;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .mock {
+        background: #fff8f4;
+        border: 1px solid rgba(24, 17, 17, 0.1);
+        border-radius: 18px;
+        box-shadow: 0 18px 34px rgba(31, 12, 12, 0.14);
+        height: 150px;
+        justify-self: end;
+        padding: 12px;
+        width: 154px;
+      }
+
+      .video {
+        background: linear-gradient(135deg, #ff0000, #230f0f);
+        border-radius: 14px;
+        height: 82px;
+        position: relative;
+      }
+
+      .video::after {
+        border-bottom: 18px solid transparent;
+        border-left: 27px solid #ffffff;
+        border-top: 18px solid transparent;
+        content: "";
+        left: 52%;
+        position: absolute;
+        top: 50%;
+        transform: translate(-42%, -50%);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .que {
+        align-items: center;
+        background: #f0efee;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 950;
+        gap: 5px;
+        padding: 7px 9px;
+      }
+
+      .que span {
+        background: #ff0000;
+        border-radius: 50%;
+        color: #ffffff;
+        display: inline-grid;
+        height: 16px;
+        place-items: center;
+        width: 16px;
+      }
+
+      .line {
+        background: #ebe1dd;
+        border-radius: 999px;
+        height: 9px;
+        margin-top: 12px;
+        width: 92px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <section class="copy">
+        <div class="brand">
+          <img src="../site/assets/queup-logo.svg" alt="QueUp logo" />
+          <strong>QueUp</strong>
+        </div>
+        <h1>Queue YouTube videos fast.</h1>
+        <div class="pill-row">
+          <span class="pill"><span>+</span> Que</span>
+          <span class="pill"><span>-</span> Que</span>
+        </div>
+      </section>
+
+      <section class="mock" aria-label="YouTube queue mockup">
+        <div class="video"></div>
+        <div class="actions">
+          <span class="que"><span>+</span> Que</span>
+        </div>
+        <div class="line"></div>
+      </section>
+    </main>
+  </body>
+</html>
