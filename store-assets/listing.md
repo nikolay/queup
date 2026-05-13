@@ -32,6 +32,5 @@ The Chrome Web Store dashboard should use the `queup.io` homepage URL, not the G
 
 - Host permission: `https://www.youtube.com/*` lets QueUp place compact queue controls on YouTube pages.
 - Host permission: `https://www.googleapis.com/*` lets QueUp read and update the user's own private Que playlist through the YouTube Data API.
-- Host permission: `https://oauth2.googleapis.com/*` is used only to exchange a Google authorization code for an access token during the secure OAuth sign-in flow.
-- Identity permission: used only to open the Google OAuth window and capture the extension-owned `chromiumapp.org` redirect.
+- Identity permission: used only to connect the Chrome profile's Google account to YouTube through Chrome's extension OAuth flow.
 - Storage permission: used to cache Que playlist state and the short-lived session access token locally in Chrome.
